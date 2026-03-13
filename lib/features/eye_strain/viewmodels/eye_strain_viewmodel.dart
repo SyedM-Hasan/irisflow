@@ -12,6 +12,11 @@ class EyeStrainState {
   final double eyeOpennessTrend;
   final String aiRecommendation;
   final bool isAutoCorrectionEnabled;
+  final int currentStep;
+  final int totalSteps;
+  final String stepName;
+  final double eyeVitality;
+  final List<double> activityData;
 
   const EyeStrainState({
     this.calibrationProgress = 0.33,
@@ -26,6 +31,15 @@ class EyeStrainState {
     this.aiRecommendation =
         'Blink rate is low. Try the 20-20-20 rule soon. Consider increasing display contrast to reduce focal effort.',
     this.isAutoCorrectionEnabled = true,
+    this.currentStep = 1,
+    this.totalSteps = 3,
+    this.stepName = 'Neutral Eye Mapping',
+    this.eyeVitality = 0.82,
+    this.activityData = const [
+      0.3, 0.4, 0.2, 0.5, 0.3, 0.6, 0.4, 0.8, 0.4, 0.5, 
+      0.9, 0.7, 0.8, 0.3, 0.5, 0.4, 0.3, 0.6, 0.5, 0.4, 
+      0.7, 0.8, 0.5, 0.4, 0.3, 0.5
+    ],
   });
 
   EyeStrainState copyWith({
@@ -40,6 +54,11 @@ class EyeStrainState {
     double? eyeOpennessTrend,
     String? aiRecommendation,
     bool? isAutoCorrectionEnabled,
+    int? currentStep,
+    int? totalSteps,
+    String? stepName,
+    double? eyeVitality,
+    List<double>? activityData,
   }) {
     return EyeStrainState(
       calibrationProgress: calibrationProgress ?? this.calibrationProgress,
@@ -54,6 +73,11 @@ class EyeStrainState {
       aiRecommendation: aiRecommendation ?? this.aiRecommendation,
       isAutoCorrectionEnabled:
           isAutoCorrectionEnabled ?? this.isAutoCorrectionEnabled,
+      currentStep: currentStep ?? this.currentStep,
+      totalSteps: totalSteps ?? this.totalSteps,
+      stepName: stepName ?? this.stepName,
+      eyeVitality: eyeVitality ?? this.eyeVitality,
+      activityData: activityData ?? this.activityData,
     );
   }
 }
