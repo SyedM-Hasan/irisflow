@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/services/app_database.dart';
+import '../../../shared/services/notification_service.dart';
 import '../../modes/viewmodels/modes_viewmodel.dart';
 
 // ---------------------------------------------------------------------------
@@ -12,9 +13,13 @@ import '../../modes/viewmodels/modes_viewmodel.dart';
 
 enum TimerState { idle, running, paused }
 
+enum TimerPhase { focus, rest }
+
 class HomeState {
   final int seconds;
   final TimerState timerState;
+  final TimerPhase timerPhase;
+  final bool isAutoMode;
   final int selectedPresetIndex;
   final double focusHours;
   final int sessionsCompleted;
@@ -23,6 +28,8 @@ class HomeState {
   const HomeState({
     required this.seconds,
     required this.timerState,
+    required this.timerPhase,
+    required this.isAutoMode,
     required this.selectedPresetIndex,
     required this.focusHours,
     required this.sessionsCompleted,
@@ -32,6 +39,8 @@ class HomeState {
   HomeState copyWith({
     int? seconds,
     TimerState? timerState,
+    TimerPhase? timerPhase,
+    bool? isAutoMode,
     int? selectedPresetIndex,
     double? focusHours,
     int? sessionsCompleted,
@@ -40,6 +49,8 @@ class HomeState {
     return HomeState(
       seconds: seconds ?? this.seconds,
       timerState: timerState ?? this.timerState,
+      timerPhase: timerPhase ?? this.timerPhase,
+      isAutoMode: isAutoMode ?? this.isAutoMode,
       selectedPresetIndex: selectedPresetIndex ?? this.selectedPresetIndex,
       focusHours: focusHours ?? this.focusHours,
       sessionsCompleted: sessionsCompleted ?? this.sessionsCompleted,
@@ -62,6 +73,8 @@ class HomeNotifier extends StateNotifier<HomeState> {
         const HomeState(
           seconds: 25 * 60,
           timerState: TimerState.idle,
+          timerPhase: TimerPhase.focus,
+          isAutoMode: false,
           selectedPresetIndex: 0,
           focusHours: 0.0,
           sessionsCompleted: 0,
@@ -89,6 +102,7 @@ class HomeNotifier extends StateNotifier<HomeState> {
       state = state.copyWith(
         selectedPresetIndex: index,
         seconds: preset.focusMin * 60,
+        timerPhase: TimerPhase.focus,
       );
     }
   }
@@ -107,7 +121,10 @@ class HomeNotifier extends StateNotifier<HomeState> {
         state.selectedPresetIndex >= modes.presets.length) {
       return 0;
     }
-    final total = modes.presets[state.selectedPresetIndex].focusMin * 60;
+    final preset = modes.presets[state.selectedPresetIndex];
+    final total = state.timerPhase == TimerPhase.focus
+        ? preset.focusMin * 60
+        : preset.breakMin * 60;
     return total == 0 ? 0 : 1 - (state.seconds / total);
   }
 
@@ -125,34 +142,77 @@ class HomeNotifier extends StateNotifier<HomeState> {
         state = state.copyWith(seconds: state.seconds - 1);
       } else {
         _timer?.cancel();
-
-        // Finalize session
-        final modes = _ref.read(modesProvider);
-        final focusMin = modes.presets[state.selectedPresetIndex].focusMin;
-        final additionalHours = focusMin / 60.0;
-
-        final currentStats = await _db.getStats();
-        await _db.updateStats(
-          FocusStatsCompanion(
-            sessionsCompleted: Value(currentStats.sessionsCompleted + 1),
-            totalFocusHours: Value(
-              currentStats.totalFocusHours + additionalHours,
-            ),
-          ),
-        );
-
-        // Add to analytics
-        await _db.addAnalyticsEntry(
-          AnalyticsEntriesCompanion.insert(
-            day: _getTodayName(),
-            hours: additionalHours,
-          ),
-        );
-
-        state = state.copyWith(timerState: TimerState.idle);
-        _syncWithPreset(state.selectedPresetIndex);
+        if (state.timerPhase == TimerPhase.focus) {
+          await _onFocusComplete();
+        } else {
+          await _onRestComplete();
+        }
       }
     });
+  }
+
+  Future<void> _onFocusComplete() async {
+    final modes = _ref.read(modesProvider);
+    final preset = modes.presets[state.selectedPresetIndex];
+    final additionalHours = preset.focusMin / 60.0;
+
+    // Persist stats
+    final currentStats = await _db.getStats();
+    await _db.updateStats(
+      FocusStatsCompanion(
+        sessionsCompleted: Value(currentStats.sessionsCompleted + 1),
+        totalFocusHours: Value(
+          currentStats.totalFocusHours + additionalHours,
+        ),
+      ),
+    );
+    await _db.addAnalyticsEntry(
+      AnalyticsEntriesCompanion.insert(
+        day: _getTodayName(),
+        hours: additionalHours,
+      ),
+    );
+
+    await NotificationService.instance.showFocusComplete();
+
+    if (state.isAutoMode) {
+      // Auto-start rest phase
+      state = state.copyWith(
+        seconds: preset.breakMin * 60,
+        timerPhase: TimerPhase.rest,
+        timerState: TimerState.idle,
+      );
+      startTimer();
+    } else {
+      state = state.copyWith(
+        timerState: TimerState.idle,
+        timerPhase: TimerPhase.focus,
+        seconds: preset.focusMin * 60,
+      );
+    }
+  }
+
+  Future<void> _onRestComplete() async {
+    final modes = _ref.read(modesProvider);
+    final preset = modes.presets[state.selectedPresetIndex];
+
+    await NotificationService.instance.showRestComplete();
+
+    if (state.isAutoMode) {
+      // Auto-start next focus phase
+      state = state.copyWith(
+        seconds: preset.focusMin * 60,
+        timerPhase: TimerPhase.focus,
+        timerState: TimerState.idle,
+      );
+      startTimer();
+    } else {
+      state = state.copyWith(
+        timerState: TimerState.idle,
+        timerPhase: TimerPhase.focus,
+        seconds: preset.focusMin * 60,
+      );
+    }
   }
 
   String _getTodayName() {
@@ -168,7 +228,10 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
   void stopTimer() {
     _timer?.cancel();
-    state = state.copyWith(timerState: TimerState.idle);
+    state = state.copyWith(
+      timerState: TimerState.idle,
+      timerPhase: TimerPhase.focus,
+    );
     _syncWithPreset(state.selectedPresetIndex);
   }
 
@@ -178,6 +241,10 @@ class HomeNotifier extends StateNotifier<HomeState> {
     } else {
       startTimer();
     }
+  }
+
+  void toggleAutoMode() {
+    state = state.copyWith(isAutoMode: !state.isAutoMode);
   }
 
   /// Reset to initial state (factory reset)

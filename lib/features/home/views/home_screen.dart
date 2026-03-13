@@ -132,7 +132,7 @@ class _TimerCard extends ConsumerWidget {
                   border: Border.all(color: c.accentGlow),
                 ),
                 child: Text(
-                  state.timerState == TimerState.running ? 'ACTIVE' : 'READY',
+                  _badgeLabel(state),
                   style: AppTextStyles.labelLarge.copyWith(
                     color: c.accent,
                     fontSize: 10,
@@ -160,9 +160,7 @@ class _TimerCard extends ConsumerWidget {
                       style: AppTextStyles.timerDisplay,
                     ),
                     Text(
-                      state.timerState == TimerState.running
-                          ? 'Focus Time'
-                          : 'Ready',
+                      _timerSubtitle(state),
                       style: AppTextStyles.bodySmall,
                     ),
                   ],
@@ -221,9 +219,54 @@ class _TimerCard extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: notifier.toggleAutoMode,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: state.isAutoMode ? c.accentSubtle : c.cardLight,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: state.isAutoMode ? c.accentGlow : Colors.transparent,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.repeat_rounded,
+                    size: 16,
+                    color:
+                        state.isAutoMode ? c.accent : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Auto Cycle',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      color: state.isAutoMode
+                          ? c.accent
+                          : AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _badgeLabel(HomeState state) {
+    if (state.timerState == TimerState.idle) return 'READY';
+    return state.timerPhase == TimerPhase.focus ? 'FOCUS' : 'REST';
+  }
+
+  String _timerSubtitle(HomeState state) {
+    if (state.timerState == TimerState.idle) return 'Ready';
+    return state.timerPhase == TimerPhase.focus ? 'Focus Time' : 'Rest Time';
   }
 }
 

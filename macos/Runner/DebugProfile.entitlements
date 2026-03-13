@@ -8,5 +8,9 @@
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
+	<key>com.apple.security.app-sandbox.temporary-exception.mach-lookup.global-name</key>
+	<array>
+		<string>com.apple.notificationcenterui.session</string>
+	</array>
 </dict>
 </plist>

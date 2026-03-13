@@ -8,6 +8,7 @@ import 'features/profile/viewmodels/profile_viewmodel.dart';
 import 'features/settings/viewmodels/settings_viewmodel.dart';
 import 'shared/services/app_database.dart';
 import 'shared/services/migration_service.dart';
+import 'shared/services/notification_service.dart';
 
 Future<void> main() async {
   // Required for plugin initialization if main is async
@@ -21,6 +22,9 @@ Future<void> main() async {
 
   // Run migration if needed
   await MigrationService.migrateIfNeeded(sharedPrefs, database);
+
+  // Initialize notifications
+  await NotificationService.instance.initialize();
 
   runApp(
     ProviderScope(
