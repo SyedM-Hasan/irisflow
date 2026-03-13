@@ -92,6 +92,7 @@ class _TimerCard extends ConsumerWidget {
     final notifier = ref.read(homeProvider.notifier);
 
     final modes = ref.watch(modesProvider);
+    if (modes.presets.isEmpty) return const SizedBox.shrink();
     final presetIndex = state.selectedPresetIndex;
     final preset = (presetIndex >= 0 && presetIndex < modes.presets.length)
         ? modes.presets[presetIndex]
