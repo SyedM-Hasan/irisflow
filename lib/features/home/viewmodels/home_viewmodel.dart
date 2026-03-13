@@ -166,6 +166,13 @@ class HomeNotifier extends StateNotifier<HomeState> {
         ),
       ),
     );
+
+    // Update eye health score
+    final currentProfile = await _db.getProfile();
+    final newScore = (currentProfile.eyeHealthScore + 1).clamp(0, 100);
+    await _db.updateProfile(
+      UserProfilesCompanion(eyeHealthScore: Value(newScore)),
+    );
     await _db.addAnalyticsEntry(
       AnalyticsEntriesCompanion.insert(
         day: _getTodayName(),

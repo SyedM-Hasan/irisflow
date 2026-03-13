@@ -32,6 +32,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           location: 'San Francisco, CA',
           memberSince: 'January 2024',
           eyeHealthScore: 84,
+          weeklyPoints: 0,
           isPro: true,
           gentleDimming: false,
           restReminders: true,
@@ -56,6 +57,25 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       restReminders: settings.restReminders,
       soundAlerts: settings.soundAlerts,
     );
+
+    _db.watchProfile().listen((profile) {
+      if (!mounted) return;
+      state = state.copyWith(
+        userName: profile.name,
+        email: profile.email,
+        eyeHealthScore: profile.eyeHealthScore,
+      );
+    });
+
+    _db.watchRecentAnalytics().listen((analytics) {
+      if (!mounted) return;
+      int weeklyPoints = 0;
+      for (final a in analytics) {
+        // Compute points based on focus hours. 1 hr = 1 point roughly.
+        weeklyPoints += a.hours.ceil();
+      }
+      state = state.copyWith(weeklyPoints: weeklyPoints);
+    });
   }
 
   void toggleGentleDimming() {

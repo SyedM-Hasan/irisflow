@@ -243,7 +243,7 @@ class _EyeHealthCard extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '▲ +3 pts this week',
+                    '${state.weeklyPoints >= 0 ? '▲ +' : '▼ '}${state.weeklyPoints} pts this week',
                     style: AppTextStyles.labelLarge.copyWith(
                       color: c.accent,
                       fontSize: 11,

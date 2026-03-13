@@ -6,6 +6,7 @@ class ProfileState {
   final String location;
   final String memberSince;
   final int eyeHealthScore;
+  final int weeklyPoints;
   final bool isPro;
   final bool gentleDimming;
   final bool restReminders;
@@ -20,6 +21,7 @@ class ProfileState {
     required this.location,
     required this.memberSince,
     required this.eyeHealthScore,
+    required this.weeklyPoints,
     required this.isPro,
     required this.gentleDimming,
     required this.restReminders,
@@ -33,6 +35,8 @@ class ProfileState {
     String? phone,
     String? bio,
     String? location,
+    int? eyeHealthScore,
+    int? weeklyPoints,
     bool? gentleDimming,
     bool? restReminders,
     bool? soundAlerts,
@@ -44,7 +48,8 @@ class ProfileState {
       bio: bio ?? this.bio,
       location: location ?? this.location,
       memberSince: memberSince,
-      eyeHealthScore: eyeHealthScore,
+      eyeHealthScore: eyeHealthScore ?? this.eyeHealthScore,
+      weeklyPoints: weeklyPoints ?? this.weeklyPoints,
       isPro: isPro,
       gentleDimming: gentleDimming ?? this.gentleDimming,
       restReminders: restReminders ?? this.restReminders,

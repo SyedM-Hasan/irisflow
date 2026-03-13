@@ -98,6 +98,10 @@ class AppDatabase extends _$AppDatabase {
     return (select(userProfiles)..where((t) => t.id.equals(1))).getSingle();
   }
 
+  Stream<AppProfile> watchProfile() {
+    return (select(userProfiles)..where((t) => t.id.equals(1))).watchSingle();
+  }
+
   Future<int> updateProfile(UserProfilesCompanion companion) {
     return (update(
       userProfiles,
