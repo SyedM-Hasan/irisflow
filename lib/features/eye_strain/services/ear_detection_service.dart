@@ -33,6 +33,12 @@ class EarDetectionService {
   bool get isRunning =>
       _cameraController != null && _cameraController!.value.isStreamingImages;
 
+  bool get isInitialized =>
+      _cameraController?.value.isInitialized ?? false;
+
+  /// Exposed so the UI can render a [CameraPreview] overlay.
+  CameraController? get cameraController => _cameraController;
+
   Future<void> initialize() async {
     final cameras = await availableCameras();
     final front = cameras.firstWhere(

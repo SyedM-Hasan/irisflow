@@ -270,15 +270,20 @@ class StrainAnalysisScreen extends ConsumerWidget {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: state.isBlinkAlertActive 
-                          ? Colors.redAccent 
-                          : const Color(0xFF4A90E2),
+                      color: state.isDetectionPaused
+                          ? const Color(0xFFF2C94C)
+                          : state.isBlinkAlertActive
+                              ? Colors.redAccent
+                              : const Color(0xFF4A90E2),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: (state.isBlinkAlertActive 
-                              ? Colors.redAccent 
-                              : const Color(0xFF4A90E2)).withValues(alpha: 0.5),
+                          color: (state.isDetectionPaused
+                                  ? const Color(0xFFF2C94C)
+                                  : state.isBlinkAlertActive
+                                      ? Colors.redAccent
+                                      : const Color(0xFF4A90E2))
+                              .withValues(alpha: 0.5),
                           blurRadius: 4,
                           spreadRadius: 2,
                         ),
@@ -287,9 +292,13 @@ class StrainAnalysisScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'ACTIVE TRACKING',
+                    state.isDetectionPaused
+                        ? 'PAUSED — NO FACE'
+                        : 'ACTIVE TRACKING',
                     style: AppTextStyles.labelMedium.copyWith(
-                      color: Colors.white.withValues(alpha: 0.7),
+                      color: state.isDetectionPaused
+                          ? const Color(0xFFF2C94C)
+                          : Colors.white.withValues(alpha: 0.7),
                       letterSpacing: 1.2,
                     ),
                   ),

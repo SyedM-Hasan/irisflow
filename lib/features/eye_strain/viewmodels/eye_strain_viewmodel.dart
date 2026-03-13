@@ -11,43 +11,47 @@ import '../services/gemini_analysis_service.dart';
 export '../models/eye_strain_state.dart';
 
 class EyeStrainViewModel extends Notifier<EyeStrainState> {
-  static const int _bufferSize = 120; // ~60 seconds at 2 Hz
+  static const int _bufferSize = 120;
   static const Duration _analysisInterval = Duration(minutes: 2);
-  static const double _blinkThreshold = 0.35; // EAR below this = blink
+  static const double _blinkThreshold = 0.35;
+  static const Duration _noFaceTimeout = Duration(seconds: 3);
 
-  // 60-second rolling buffer of EAR samples
+  // ── EAR buffer + blink state ────────────────────────────────────────────────
   final List<EarSample> _earBuffer = [];
-
-  // Blink counting: track rising edge (closed → open)
   bool _wasBlinking = false;
   int _blinkCount = 0;
   DateTime _blinkWindowStart = DateTime.now();
-
-  // Previous blinkRate for trend calculation
   int _prevBlinkRate = 15;
   double _prevEyeOpenness = 0.85;
 
+  // ── Pause / resume state ────────────────────────────────────────────────────
+  bool _isDetectionPaused = false;
+  DateTime? _pausedAt;
+
+  // ── Calibration state ───────────────────────────────────────────────────────
+  int _calibrationElapsed = 0;
+  final List<double> _calibrationNeutralSamples = [];
+
+  // ── Timers ───────────────────────────────────────────────────────────────────
   StreamSubscription<EarSample>? _earSubscription;
   Timer? _analysisTimer;
   Timer? _calibrationTimer;
+  Timer? _noFaceTimer;
 
   @override
   EyeStrainState build() {
     GeminiAnalysisService.instance.initialize();
-
     ref.onDispose(() {
       _earSubscription?.cancel();
       _analysisTimer?.cancel();
       _calibrationTimer?.cancel();
+      _noFaceTimer?.cancel();
       EarDetectionService.instance.dispose();
     });
-
     return const EyeStrainState();
   }
 
-  // ---------------------------------------------------------------------------
-  // Public API
-  // ---------------------------------------------------------------------------
+  // ── Public API ───────────────────────────────────────────────────────────────
 
   void toggleAutoCorrection() {
     state = state.copyWith(
@@ -67,86 +71,151 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     final granted = await _requestCameraPermission();
     if (!granted) return;
 
+    // Reset all calibration state
     _calibrationTimer?.cancel();
-    _earBuffer.clear();
-    _blinkCount = 0;
+    _noFaceTimer?.cancel();
+    _calibrationElapsed = 0;
+    _calibrationNeutralSamples.clear();
+    _isDetectionPaused = false;
+    _pausedAt = null;
 
     state = state.copyWith(
       isCalibrating: true,
       isCalibrationComplete: false,
+      isCameraReady: false,
+      isFaceDetected: false,
+      isDetectionPaused: false,
       calibrationProgress: 0.0,
       remainingSeconds: 30,
       currentStep: 1,
       stepName: 'Neutral Eye Mapping',
     );
 
-    // Initialize camera silently during calibration
     if (!EarDetectionService.instance.isRunning) {
       await EarDetectionService.instance.initialize();
-      EarDetectionService.instance.startDetection();
     }
+    state = state.copyWith(isCameraReady: true);
+    EarDetectionService.instance.startDetection();
 
-    // Collect neutral EAR samples during step 1 (first 10 s)
-    final List<double> neutralSamples = [];
     _earSubscription?.cancel();
     _earSubscription = EarDetectionService.instance.earStream.listen((sample) {
-      neutralSamples.add(sample.average);
+      // Only collect neutral samples during step 1 when not paused
+      if (!_isDetectionPaused && _calibrationElapsed <= 10) {
+        _calibrationNeutralSamples.add(sample.average);
+      }
+      _onFaceDetected(sample);
     });
 
-    int elapsed = 0;
-    const totalSeconds = 30;
-
-    _calibrationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      elapsed++;
-      final progress = elapsed / totalSeconds;
-      final remaining = totalSeconds - elapsed;
-
-      int step;
-      String stepName;
-      if (elapsed <= 10) {
-        step = 1;
-        stepName = 'Neutral Eye Mapping';
-      } else if (elapsed <= 20) {
-        step = 2;
-        stepName = 'Focus Tracking';
-      } else {
-        step = 3;
-        stepName = 'Relaxed State';
-      }
-
-      state = state.copyWith(
-        calibrationProgress: progress,
-        remainingSeconds: remaining,
-        currentStep: step,
-        stepName: stepName,
-      );
-
-      if (elapsed >= totalSeconds) {
-        timer.cancel();
-        final neutral = neutralSamples.isNotEmpty
-            ? neutralSamples.reduce((a, b) => a + b) / neutralSamples.length
-            : 0.85;
-
-        state = state.copyWith(
-          isCalibrating: false,
-          isCalibrationComplete: true,
-          calibrationProgress: 1.0,
-          neutralEar: neutral.clamp(0.3, 1.0),
-        );
-
-        _earSubscription?.cancel();
-        _earSubscription = null;
-      }
-    });
+    _startCalibrationTimer();
   }
 
   void dismissBreakOverlay() {
     state = state.copyWith(isBreakOverlayVisible: false);
   }
 
-  // ---------------------------------------------------------------------------
-  // Internal: tracking lifecycle
-  // ---------------------------------------------------------------------------
+  // ── Pause / resume ───────────────────────────────────────────────────────────
+
+  /// Called when no face is detected for [_noFaceTimeout] — pauses all timers.
+  void _pauseCalculation() {
+    if (_isDetectionPaused) return;
+    _isDetectionPaused = true;
+    _pausedAt = DateTime.now();
+
+    _calibrationTimer?.cancel();
+    _analysisTimer?.cancel();
+
+    state = state.copyWith(
+      isDetectionPaused: true,
+      isFaceDetected: false,
+    );
+  }
+
+  /// Called when ML Kit detects a face after a pause — resumes all timers.
+  void _resumeCalculation() {
+    if (!_isDetectionPaused) return;
+    _isDetectionPaused = false;
+
+    // Shift the blink window forward by however long we were paused,
+    // so paused time is excluded from blink-rate calculations.
+    if (_pausedAt != null) {
+      final pausedFor = DateTime.now().difference(_pausedAt!);
+      _blinkWindowStart = _blinkWindowStart.add(pausedFor);
+      _pausedAt = null;
+    }
+
+    state = state.copyWith(isDetectionPaused: false);
+
+    if (state.isCalibrating) {
+      _startCalibrationTimer();
+    } else if (state.isActiveTracking) {
+      _startAnalysisTimer();
+    }
+  }
+
+  // ── Timer helpers (start / stop independently) ───────────────────────────────
+
+  void _startCalibrationTimer() {
+    _calibrationTimer?.cancel();
+    _calibrationTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _tickCalibration(),
+    );
+  }
+
+  void _startAnalysisTimer() {
+    _analysisTimer?.cancel();
+    _analysisTimer = Timer.periodic(_analysisInterval, (_) => _runAnalysis());
+  }
+
+  void _tickCalibration() {
+    const totalSeconds = 30;
+    _calibrationElapsed++;
+    final progress = _calibrationElapsed / totalSeconds;
+    final remaining = totalSeconds - _calibrationElapsed;
+
+    final int step;
+    final String stepName;
+    if (_calibrationElapsed <= 10) {
+      step = 1;
+      stepName = 'Neutral Eye Mapping';
+    } else if (_calibrationElapsed <= 20) {
+      step = 2;
+      stepName = 'Focus Tracking';
+    } else {
+      step = 3;
+      stepName = 'Relaxed State';
+    }
+
+    state = state.copyWith(
+      calibrationProgress: progress,
+      remainingSeconds: remaining,
+      currentStep: step,
+      stepName: stepName,
+    );
+
+    if (_calibrationElapsed >= totalSeconds) {
+      _calibrationTimer?.cancel();
+      _noFaceTimer?.cancel();
+
+      final neutral = _calibrationNeutralSamples.isNotEmpty
+          ? _calibrationNeutralSamples.reduce((a, b) => a + b) /
+              _calibrationNeutralSamples.length
+          : 0.85;
+
+      state = state.copyWith(
+        isCalibrating: false,
+        isCalibrationComplete: true,
+        isDetectionPaused: false,
+        calibrationProgress: 1.0,
+        neutralEar: neutral.clamp(0.3, 1.0),
+      );
+
+      _earSubscription?.cancel();
+      _earSubscription = null;
+    }
+  }
+
+  // ── Tracking lifecycle ────────────────────────────────────────────────────────
 
   Future<void> _startTracking() async {
     final granted = await _requestCameraPermission();
@@ -155,21 +224,24 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     if (!EarDetectionService.instance.isRunning) {
       await EarDetectionService.instance.initialize();
     }
+    state = state.copyWith(isCameraReady: true);
     EarDetectionService.instance.startDetection();
 
     _earBuffer.clear();
     _blinkCount = 0;
+    _isDetectionPaused = false;
+    _pausedAt = null;
     _prevBlinkRate = state.blinkRate;
     _prevEyeOpenness = state.eyeOpenness;
     _blinkWindowStart = DateTime.now();
 
     _earSubscription = EarDetectionService.instance.earStream.listen(_onSample);
+    _startAnalysisTimer();
 
-    _analysisTimer = Timer.periodic(_analysisInterval, (_) {
-      _runAnalysis();
-    });
-
-    state = state.copyWith(isActiveTracking: true);
+    state = state.copyWith(
+      isActiveTracking: true,
+      isDetectionPaused: false,
+    );
   }
 
   void _stopTracking() {
@@ -178,30 +250,51 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     _earSubscription = null;
     _analysisTimer?.cancel();
     _analysisTimer = null;
+    _noFaceTimer?.cancel();
+    _noFaceTimer = null;
+    _isDetectionPaused = false;
 
     state = state.copyWith(
       isActiveTracking: false,
+      isDetectionPaused: false,
       isBlinkAlertActive: false,
     );
   }
 
+  // ── Per-sample processing ─────────────────────────────────────────────────────
+
+  /// Handles face presence: resets no-face timer, resumes if paused.
+  void _onFaceDetected(EarSample sample) {
+    // Reset the no-face watchdog
+    _noFaceTimer?.cancel();
+    _noFaceTimer = Timer(_noFaceTimeout, _pauseCalculation);
+
+    // Resume if we were paused
+    if (_isDetectionPaused) _resumeCalculation();
+
+    state = state.copyWith(
+      isFaceDetected: true,
+      leftEyeOpen: double.parse(sample.leftEyeOpen.toStringAsFixed(2)),
+      rightEyeOpen: double.parse(sample.rightEyeOpen.toStringAsFixed(2)),
+    );
+  }
+
   void _onSample(EarSample sample) {
-    // Rolling buffer
+    _onFaceDetected(sample);
+
+    // Do not accumulate data while paused
+    if (_isDetectionPaused) return;
+
     _earBuffer.add(sample);
-    if (_earBuffer.length > _bufferSize) {
-      _earBuffer.removeAt(0);
-    }
+    if (_earBuffer.length > _bufferSize) _earBuffer.removeAt(0);
 
     final ear = sample.average;
 
-    // Blink detection: closed → open transition
+    // Blink: detect closed → open rising edge
     final isBlinking = ear < _blinkThreshold;
-    if (_wasBlinking && !isBlinking) {
-      _blinkCount++;
-    }
+    if (_wasBlinking && !isBlinking) _blinkCount++;
     _wasBlinking = isBlinking;
 
-    // Update live metrics
     final elapsedMin = DateTime.now()
             .difference(_blinkWindowStart)
             .inSeconds
@@ -215,7 +308,6 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
         ? (ear - _prevEyeOpenness) / _prevEyeOpenness
         : 0.0;
 
-    // Activity data: shift buffer and append normalized EAR
     final newActivity = List<double>.from(state.activityData);
     if (newActivity.length >= 26) newActivity.removeAt(0);
     newActivity.add(ear.clamp(0.0, 1.0));
@@ -229,6 +321,8 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
       activityData: newActivity,
     );
   }
+
+  // ── Gemini analysis ────────────────────────────────────────────────────────────
 
   Future<void> _runAnalysis() async {
     if (_earBuffer.isEmpty) return;
@@ -257,7 +351,6 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
 
   void _applyAdaptiveUI(StrainLevel level) {
     if (!state.isAutoCorrectionEnabled) return;
-
     switch (level) {
       case StrainLevel.relaxed:
         state = state.copyWith(
@@ -283,14 +376,14 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     }
   }
 
+  // ── Permissions ────────────────────────────────────────────────────────────────
+
   Future<bool> _requestCameraPermission() async {
     final status = await Permission.camera.request();
     return status.isGranted;
   }
 
-  // ---------------------------------------------------------------------------
-  // Dev helper: simulate a Genkit analysis cycle (useful without a device)
-  // ---------------------------------------------------------------------------
+  // ── Dev helper ─────────────────────────────────────────────────────────────────
 
   void simulateAnalysis() {
     final levels = StrainLevel.values;
@@ -299,10 +392,12 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     final fakeBuffer = List.generate(
       60,
       (i) => EarSample(
-        leftEyeOpen:
-            next == StrainLevel.high ? 0.3 + math.Random().nextDouble() * 0.1 : 0.8,
-        rightEyeOpen:
-            next == StrainLevel.high ? 0.3 + math.Random().nextDouble() * 0.1 : 0.8,
+        leftEyeOpen: next == StrainLevel.high
+            ? 0.3 + math.Random().nextDouble() * 0.1
+            : 0.8,
+        rightEyeOpen: next == StrainLevel.high
+            ? 0.3 + math.Random().nextDouble() * 0.1
+            : 0.8,
         timestamp: DateTime.now().subtract(Duration(seconds: 60 - i)),
       ),
     );

@@ -41,7 +41,12 @@ class EyeStrainState {
   final int remainingSeconds;
   final bool isCalibrating;
   final bool isCalibrationComplete;
+  final bool isCameraReady;
   final double neutralEar;
+  final bool isFaceDetected;
+  final bool isDetectionPaused;
+  final double leftEyeOpen;
+  final double rightEyeOpen;
   final bool isActiveTracking;
   final bool isBlinkAlertActive;
   final bool isBreakOverlayVisible;
@@ -69,7 +74,12 @@ class EyeStrainState {
     this.remainingSeconds = 30,
     this.isCalibrating = false,
     this.isCalibrationComplete = false,
+    this.isCameraReady = false,
     this.neutralEar = 0.85,
+    this.isFaceDetected = false,
+    this.isDetectionPaused = false,
+    this.leftEyeOpen = 0.0,
+    this.rightEyeOpen = 0.0,
     this.isActiveTracking = false,
     this.isBlinkAlertActive = false,
     this.isBreakOverlayVisible = false,
@@ -101,7 +111,12 @@ class EyeStrainState {
     int? remainingSeconds,
     bool? isCalibrating,
     bool? isCalibrationComplete,
+    bool? isCameraReady,
     double? neutralEar,
+    bool? isFaceDetected,
+    bool? isDetectionPaused,
+    double? leftEyeOpen,
+    double? rightEyeOpen,
     bool? isActiveTracking,
     bool? isBlinkAlertActive,
     bool? isBreakOverlayVisible,
@@ -128,7 +143,12 @@ class EyeStrainState {
       isCalibrating: isCalibrating ?? this.isCalibrating,
       isCalibrationComplete:
           isCalibrationComplete ?? this.isCalibrationComplete,
+      isCameraReady: isCameraReady ?? this.isCameraReady,
       neutralEar: neutralEar ?? this.neutralEar,
+      isFaceDetected: isFaceDetected ?? this.isFaceDetected,
+      isDetectionPaused: isDetectionPaused ?? this.isDetectionPaused,
+      leftEyeOpen: leftEyeOpen ?? this.leftEyeOpen,
+      rightEyeOpen: rightEyeOpen ?? this.rightEyeOpen,
       isActiveTracking: isActiveTracking ?? this.isActiveTracking,
       isBlinkAlertActive: isBlinkAlertActive ?? this.isBlinkAlertActive,
       isBreakOverlayVisible:
