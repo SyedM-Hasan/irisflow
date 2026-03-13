@@ -8,6 +8,7 @@ class FocusPreset {
   final int focusMin;
   final int breakMin;
   final bool isCustom;
+  final String tag;
 
   const FocusPreset({
     this.id,
@@ -17,6 +18,7 @@ class FocusPreset {
     required this.focusMin,
     required this.breakMin,
     this.isCustom = false,
+    this.tag = 'general',
   });
 
   factory FocusPreset.fromDb(AppFocusPreset db) => FocusPreset(
@@ -27,6 +29,7 @@ class FocusPreset {
     focusMin: db.focusMin,
     breakMin: db.breakMin,
     isCustom: db.isCustom,
+    tag: db.tag,
   );
 }
 

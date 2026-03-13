@@ -67,14 +67,28 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       );
     });
 
-    _db.watchRecentAnalytics().listen((analytics) {
+    _db.watchRecentAnalytics().listen((analytics) async {
       if (!mounted) return;
-      int weeklyPoints = 0;
-      for (final a in analytics) {
-        // Compute points based on focus hours. 1 hr = 1 point roughly.
-        weeklyPoints += a.hours.ceil();
-      }
-      state = state.copyWith(weeklyPoints: weeklyPoints);
+
+      final weeklyHours = analytics.fold<double>(0, (sum, a) => sum + a.hours);
+      final weeklyPoints = (weeklyHours * 60).round();
+
+      int streakDays = 0;
+      try {
+        final stats = await _db.getStats();
+        streakDays = stats.streakDays;
+      } catch (_) {}
+
+      final hoursBonus = (weeklyHours / 6 * 30).clamp(0, 30).toInt();
+      final streakBonus = (streakDays / 7 * 20).clamp(0, 20).toInt();
+      final score = (50 + hoursBonus + streakBonus).clamp(0, 100);
+
+      await _db.updateProfile(
+        UserProfilesCompanion(eyeHealthScore: Value(score)),
+      );
+
+      if (!mounted) return;
+      state = state.copyWith(weeklyPoints: weeklyPoints, eyeHealthScore: score);
     });
   }
 

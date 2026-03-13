@@ -179,8 +179,15 @@ class _NotificationsSection extends ConsumerWidget {
 // Appearance
 // ---------------------------------------------------------------------------
 
-class _AppearanceSection extends ConsumerWidget {
+class _AppearanceSection extends ConsumerStatefulWidget {
   const _AppearanceSection();
+
+  @override
+  ConsumerState<_AppearanceSection> createState() => _AppearanceSectionState();
+}
+
+class _AppearanceSectionState extends ConsumerState<_AppearanceSection> {
+  String? _pendingTheme;
 
   Color _themeColor(String name, AppThemeColors palette) {
     if (name.contains('Sage')) return palette.accent;
@@ -189,10 +196,17 @@ class _AppearanceSection extends ConsumerWidget {
     return palette.accent;
   }
 
+  Future<void> _selectTheme(String theme) async {
+    if (_pendingTheme != null) return;
+    setState(() => _pendingTheme = theme);
+    await Future.delayed(const Duration(milliseconds: 500));
+    ref.read(settingsProvider.notifier).selectTheme(theme);
+    if (mounted) setState(() => _pendingTheme = null);
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final state = ref.watch(settingsProvider);
-    final notifier = ref.read(settingsProvider.notifier);
     final c = context.themeColors;
 
     return Column(
@@ -225,11 +239,12 @@ class _AppearanceSection extends ConsumerWidget {
               const SizedBox(height: 14),
               ...state.themes.map((t) {
                 final selected = state.selectedTheme == t;
+                final isPending = _pendingTheme == t;
                 final tColor = _themeColor(t, c);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: GestureDetector(
-                    onTap: () => notifier.selectTheme(t),
+                    onTap: () => _selectTheme(t),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
                       padding: const EdgeInsets.symmetric(
@@ -237,10 +252,12 @@ class _AppearanceSection extends ConsumerWidget {
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: selected ? c.accentSubtle : c.cardLight,
+                        color: selected || isPending
+                            ? c.accentSubtle
+                            : c.cardLight,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: selected ? c.accent : c.divider,
+                          color: selected || isPending ? c.accent : c.divider,
                           width: 1.5,
                         ),
                       ),
@@ -257,12 +274,31 @@ class _AppearanceSection extends ConsumerWidget {
                           const SizedBox(width: 10),
                           Text(t, style: AppTextStyles.bodyLarge),
                           const Spacer(),
-                          if (selected)
-                            Icon(
-                              Icons.check_rounded,
-                              color: c.accent,
-                              size: 18,
-                            ),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            child: isPending
+                                ? SizedBox(
+                                    key: const ValueKey('loader'),
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: c.accent,
+                                    ),
+                                  )
+                                : selected
+                                ? Icon(
+                                    Icons.check_rounded,
+                                    key: const ValueKey('check'),
+                                    color: c.accent,
+                                    size: 18,
+                                  )
+                                : const SizedBox(
+                                    key: ValueKey('empty'),
+                                    width: 18,
+                                    height: 18,
+                                  ),
+                          ),
                         ],
                       ),
                     ),

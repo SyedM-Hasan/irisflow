@@ -379,7 +379,9 @@ class _TodayStats extends ConsumerWidget {
             children: [
               StatBadge(
                 icon: Icons.access_time_rounded,
-                value: '${state.focusHours.toStringAsFixed(1)}h',
+                value: state.focusHours < 1
+                    ? '${(state.focusHours * 60).round()}min'
+                    : '${state.focusHours.toStringAsFixed(1)}h',
                 label: 'Focus Time',
               ),
               Container(width: 1, height: 40, color: c.divider),

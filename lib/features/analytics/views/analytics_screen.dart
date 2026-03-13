@@ -298,23 +298,10 @@ class _FocusDistributionItem extends StatelessWidget {
   final Map<String, dynamic> data;
   const _FocusDistributionItem({required this.data});
 
-  Color _color(AppThemeColors c) {
-    switch (data['colorKey']) {
-      case 'dev':
-        return c.accent;
-      case 'design':
-        return AppColors.chartDesign;
-      case 'email':
-        return AppColors.chartEmail;
-      default:
-        return AppColors.warning;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = context.themeColors;
-    final color = _color(c);
+    final color = data['color'] as Color? ?? c.accent;
     final pct = (data['percent'] as double) * 100;
     return AppCard(
       child: Row(

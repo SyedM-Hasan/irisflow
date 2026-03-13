@@ -191,6 +191,8 @@ class HomeNotifier extends StateNotifier<HomeState> {
       AnalyticsEntriesCompanion.insert(
         day: _getTodayName(),
         hours: additionalHours,
+        category: Value(preset.tag),
+        createdAt: Value(DateTime.now()),
       ),
     );
 

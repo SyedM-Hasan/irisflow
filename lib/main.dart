@@ -53,6 +53,8 @@ class IrisFlowApp extends ConsumerWidget {
       title: 'IrisFlow',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.fromName(themeName),
+      themeAnimationDuration: const Duration(milliseconds: 500),
+      themeAnimationCurve: Curves.easeInOut,
       routerConfig: router,
     );
   }

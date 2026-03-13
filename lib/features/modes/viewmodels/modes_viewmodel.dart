@@ -37,6 +37,7 @@ class ModesNotifier extends StateNotifier<ModesState> {
         focusMin: preset.focusMin,
         breakMin: preset.breakMin,
         isCustom: const Value(true),
+        tag: Value(preset.tag),
       ),
     );
     // State will update automatically via stream listener

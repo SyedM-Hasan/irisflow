@@ -45,6 +45,7 @@ class FocusPresets extends Table {
   IntColumn get focusMin => integer()();
   IntColumn get breakMin => integer()();
   BoolColumn get isCustom => boolean().withDefault(const Constant(false))();
+  TextColumn get tag => text().withDefault(const Constant('general'))();
 }
 
 @DataClassName('AppStat')
@@ -60,6 +61,10 @@ class AnalyticsEntries extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get day => text()(); // e.g., 'Mon', 'Tue'
   RealColumn get hours => real()();
+  TextColumn get category =>
+      text().withDefault(const Constant('Uncategorized'))();
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(currentDateAndTime)();
 }
 
 // ---------------------------------------------------------------------------
@@ -79,7 +84,14 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 4;
+
+  Future<Set<String>> _columnNames(String table) async {
+    final rows = await customSelect(
+      'PRAGMA table_info($table)',
+    ).get();
+    return rows.map((r) => r.read<String>('name')).toSet();
+  }
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -87,6 +99,23 @@ class AppDatabase extends _$AppDatabase {
       if (from < 2) {
         await m.addColumn(appSettings, appSettings.readyTimerEnabled);
         await m.addColumn(appSettings, appSettings.readyDuration);
+      }
+      if (from < 3) {
+        final cols = await _columnNames('analytics_entries');
+        if (!cols.contains('category')) {
+          await m.addColumn(analyticsEntries, analyticsEntries.category);
+        }
+        if (!cols.contains('created_at')) {
+          // currentDateAndTime is a non-constant default; SQLite forbids those
+          // in ALTER TABLE, so use epoch 0 for pre-existing rows.
+          await customStatement(
+            'ALTER TABLE "analytics_entries" '
+            'ADD COLUMN "created_at" INTEGER NOT NULL DEFAULT 0',
+          );
+        }
+      }
+      if (from < 4) {
+        await m.addColumn(focusPresets, focusPresets.tag);
       }
     },
   );
@@ -154,6 +183,21 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
+  Stream<List<AppAnalytics>> watchAnalyticsForPeriod(
+    DateTime start,
+    DateTime end,
+  ) {
+    return (select(analyticsEntries)
+          ..where((t) => t.createdAt.isBetweenValues(start, end))
+          ..orderBy([
+            (t) => OrderingTerm(
+              expression: t.createdAt,
+              mode: OrderingMode.asc,
+            ),
+          ]))
+        .watch();
+  }
+
   Future<void> clearAnalytics() => delete(analyticsEntries).go();
   Future<int> addAnalyticsEntry(AnalyticsEntriesCompanion entry) =>
       into(analyticsEntries).insert(entry);
@@ -183,9 +227,9 @@ class AppDatabase extends _$AppDatabase {
 
       // Re-insert default presets
       final defaults = [
-        ['Deep Work', '20/20 rule', '20 mins focus, 20 mins break', 20, 20],
-        ['Creative Flow', '50/5 rule', '50 mins focus, 5 mins break', 50, 5],
-        ['Quick Study', '15/5 rule', '15 mins focus, 5 mins break', 15, 5],
+        ['Development', '20/20 rule', '20 mins focus, 20 mins break', 20, 20, 'dev'],
+        ['Design Work', '50/5 rule', '50 mins focus, 5 mins break', 50, 5, 'design'],
+        ['Email & Admin', '15/5 rule', '15 mins focus, 5 mins break', 15, 5, 'email'],
       ];
       for (final d in defaults) {
         await into(focusPresets).insert(
@@ -195,6 +239,7 @@ class AppDatabase extends _$AppDatabase {
             description: d[2] as String,
             focusMin: d[3] as int,
             breakMin: d[4] as int,
+            tag: Value(d[5] as String),
           ),
         );
       }

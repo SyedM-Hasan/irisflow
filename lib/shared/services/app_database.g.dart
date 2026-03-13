@@ -1074,6 +1074,16 @@ class $FocusPresetsTable extends FocusPresets
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _tagMeta = const VerificationMeta('tag');
+  @override
+  late final GeneratedColumn<String> tag = GeneratedColumn<String>(
+    'tag',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('general'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1083,6 +1093,7 @@ class $FocusPresetsTable extends FocusPresets
     focusMin,
     breakMin,
     isCustom,
+    tag,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1148,6 +1159,12 @@ class $FocusPresetsTable extends FocusPresets
         isCustom.isAcceptableOrUnknown(data['is_custom']!, _isCustomMeta),
       );
     }
+    if (data.containsKey('tag')) {
+      context.handle(
+        _tagMeta,
+        tag.isAcceptableOrUnknown(data['tag']!, _tagMeta),
+      );
+    }
     return context;
   }
 
@@ -1185,6 +1202,10 @@ class $FocusPresetsTable extends FocusPresets
         DriftSqlType.bool,
         data['${effectivePrefix}is_custom'],
       )!,
+      tag: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag'],
+      )!,
     );
   }
 
@@ -1202,6 +1223,7 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
   final int focusMin;
   final int breakMin;
   final bool isCustom;
+  final String tag;
   const AppFocusPreset({
     required this.id,
     required this.title,
@@ -1210,6 +1232,7 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
     required this.focusMin,
     required this.breakMin,
     required this.isCustom,
+    required this.tag,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1221,6 +1244,7 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
     map['focus_min'] = Variable<int>(focusMin);
     map['break_min'] = Variable<int>(breakMin);
     map['is_custom'] = Variable<bool>(isCustom);
+    map['tag'] = Variable<String>(tag);
     return map;
   }
 
@@ -1233,6 +1257,7 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
       focusMin: Value(focusMin),
       breakMin: Value(breakMin),
       isCustom: Value(isCustom),
+      tag: Value(tag),
     );
   }
 
@@ -1249,6 +1274,7 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
       focusMin: serializer.fromJson<int>(json['focusMin']),
       breakMin: serializer.fromJson<int>(json['breakMin']),
       isCustom: serializer.fromJson<bool>(json['isCustom']),
+      tag: serializer.fromJson<String>(json['tag']),
     );
   }
   @override
@@ -1262,6 +1288,7 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
       'focusMin': serializer.toJson<int>(focusMin),
       'breakMin': serializer.toJson<int>(breakMin),
       'isCustom': serializer.toJson<bool>(isCustom),
+      'tag': serializer.toJson<String>(tag),
     };
   }
 
@@ -1273,6 +1300,7 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
     int? focusMin,
     int? breakMin,
     bool? isCustom,
+    String? tag,
   }) => AppFocusPreset(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -1281,6 +1309,7 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
     focusMin: focusMin ?? this.focusMin,
     breakMin: breakMin ?? this.breakMin,
     isCustom: isCustom ?? this.isCustom,
+    tag: tag ?? this.tag,
   );
   AppFocusPreset copyWithCompanion(FocusPresetsCompanion data) {
     return AppFocusPreset(
@@ -1293,6 +1322,7 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
       focusMin: data.focusMin.present ? data.focusMin.value : this.focusMin,
       breakMin: data.breakMin.present ? data.breakMin.value : this.breakMin,
       isCustom: data.isCustom.present ? data.isCustom.value : this.isCustom,
+      tag: data.tag.present ? data.tag.value : this.tag,
     );
   }
 
@@ -1305,14 +1335,23 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
           ..write('description: $description, ')
           ..write('focusMin: $focusMin, ')
           ..write('breakMin: $breakMin, ')
-          ..write('isCustom: $isCustom')
+          ..write('isCustom: $isCustom, ')
+          ..write('tag: $tag')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, title, rule, description, focusMin, breakMin, isCustom);
+  int get hashCode => Object.hash(
+    id,
+    title,
+    rule,
+    description,
+    focusMin,
+    breakMin,
+    isCustom,
+    tag,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1323,7 +1362,8 @@ class AppFocusPreset extends DataClass implements Insertable<AppFocusPreset> {
           other.description == this.description &&
           other.focusMin == this.focusMin &&
           other.breakMin == this.breakMin &&
-          other.isCustom == this.isCustom);
+          other.isCustom == this.isCustom &&
+          other.tag == this.tag);
 }
 
 class FocusPresetsCompanion extends UpdateCompanion<AppFocusPreset> {
@@ -1334,6 +1374,7 @@ class FocusPresetsCompanion extends UpdateCompanion<AppFocusPreset> {
   final Value<int> focusMin;
   final Value<int> breakMin;
   final Value<bool> isCustom;
+  final Value<String> tag;
   const FocusPresetsCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -1342,6 +1383,7 @@ class FocusPresetsCompanion extends UpdateCompanion<AppFocusPreset> {
     this.focusMin = const Value.absent(),
     this.breakMin = const Value.absent(),
     this.isCustom = const Value.absent(),
+    this.tag = const Value.absent(),
   });
   FocusPresetsCompanion.insert({
     this.id = const Value.absent(),
@@ -1351,6 +1393,7 @@ class FocusPresetsCompanion extends UpdateCompanion<AppFocusPreset> {
     required int focusMin,
     required int breakMin,
     this.isCustom = const Value.absent(),
+    this.tag = const Value.absent(),
   }) : title = Value(title),
        rule = Value(rule),
        description = Value(description),
@@ -1364,6 +1407,7 @@ class FocusPresetsCompanion extends UpdateCompanion<AppFocusPreset> {
     Expression<int>? focusMin,
     Expression<int>? breakMin,
     Expression<bool>? isCustom,
+    Expression<String>? tag,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1373,6 +1417,7 @@ class FocusPresetsCompanion extends UpdateCompanion<AppFocusPreset> {
       if (focusMin != null) 'focus_min': focusMin,
       if (breakMin != null) 'break_min': breakMin,
       if (isCustom != null) 'is_custom': isCustom,
+      if (tag != null) 'tag': tag,
     });
   }
 
@@ -1384,6 +1429,7 @@ class FocusPresetsCompanion extends UpdateCompanion<AppFocusPreset> {
     Value<int>? focusMin,
     Value<int>? breakMin,
     Value<bool>? isCustom,
+    Value<String>? tag,
   }) {
     return FocusPresetsCompanion(
       id: id ?? this.id,
@@ -1393,6 +1439,7 @@ class FocusPresetsCompanion extends UpdateCompanion<AppFocusPreset> {
       focusMin: focusMin ?? this.focusMin,
       breakMin: breakMin ?? this.breakMin,
       isCustom: isCustom ?? this.isCustom,
+      tag: tag ?? this.tag,
     );
   }
 
@@ -1420,6 +1467,9 @@ class FocusPresetsCompanion extends UpdateCompanion<AppFocusPreset> {
     if (isCustom.present) {
       map['is_custom'] = Variable<bool>(isCustom.value);
     }
+    if (tag.present) {
+      map['tag'] = Variable<String>(tag.value);
+    }
     return map;
   }
 
@@ -1432,7 +1482,8 @@ class FocusPresetsCompanion extends UpdateCompanion<AppFocusPreset> {
           ..write('description: $description, ')
           ..write('focusMin: $focusMin, ')
           ..write('breakMin: $breakMin, ')
-          ..write('isCustom: $isCustom')
+          ..write('isCustom: $isCustom, ')
+          ..write('tag: $tag')
           ..write(')'))
         .toString();
   }
@@ -1788,8 +1839,32 @@ class $AnalyticsEntriesTable extends AnalyticsEntries
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, day, hours];
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Uncategorized'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, day, hours, category, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1821,6 +1896,18 @@ class $AnalyticsEntriesTable extends AnalyticsEntries
     } else if (isInserting) {
       context.missing(_hoursMeta);
     }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
     return context;
   }
 
@@ -1842,6 +1929,14 @@ class $AnalyticsEntriesTable extends AnalyticsEntries
         DriftSqlType.double,
         data['${effectivePrefix}hours'],
       )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
     );
   }
 
@@ -1855,10 +1950,14 @@ class AppAnalytics extends DataClass implements Insertable<AppAnalytics> {
   final int id;
   final String day;
   final double hours;
+  final String category;
+  final DateTime createdAt;
   const AppAnalytics({
     required this.id,
     required this.day,
     required this.hours,
+    required this.category,
+    required this.createdAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1866,6 +1965,8 @@ class AppAnalytics extends DataClass implements Insertable<AppAnalytics> {
     map['id'] = Variable<int>(id);
     map['day'] = Variable<String>(day);
     map['hours'] = Variable<double>(hours);
+    map['category'] = Variable<String>(category);
+    map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
 
@@ -1874,6 +1975,8 @@ class AppAnalytics extends DataClass implements Insertable<AppAnalytics> {
       id: Value(id),
       day: Value(day),
       hours: Value(hours),
+      category: Value(category),
+      createdAt: Value(createdAt),
     );
   }
 
@@ -1886,6 +1989,8 @@ class AppAnalytics extends DataClass implements Insertable<AppAnalytics> {
       id: serializer.fromJson<int>(json['id']),
       day: serializer.fromJson<String>(json['day']),
       hours: serializer.fromJson<double>(json['hours']),
+      category: serializer.fromJson<String>(json['category']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
   @override
@@ -1895,19 +2000,31 @@ class AppAnalytics extends DataClass implements Insertable<AppAnalytics> {
       'id': serializer.toJson<int>(id),
       'day': serializer.toJson<String>(day),
       'hours': serializer.toJson<double>(hours),
+      'category': serializer.toJson<String>(category),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
 
-  AppAnalytics copyWith({int? id, String? day, double? hours}) => AppAnalytics(
+  AppAnalytics copyWith({
+    int? id,
+    String? day,
+    double? hours,
+    String? category,
+    DateTime? createdAt,
+  }) => AppAnalytics(
     id: id ?? this.id,
     day: day ?? this.day,
     hours: hours ?? this.hours,
+    category: category ?? this.category,
+    createdAt: createdAt ?? this.createdAt,
   );
   AppAnalytics copyWithCompanion(AnalyticsEntriesCompanion data) {
     return AppAnalytics(
       id: data.id.present ? data.id.value : this.id,
       day: data.day.present ? data.day.value : this.day,
       hours: data.hours.present ? data.hours.value : this.hours,
+      category: data.category.present ? data.category.value : this.category,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
 
@@ -1916,46 +2033,60 @@ class AppAnalytics extends DataClass implements Insertable<AppAnalytics> {
     return (StringBuffer('AppAnalytics(')
           ..write('id: $id, ')
           ..write('day: $day, ')
-          ..write('hours: $hours')
+          ..write('hours: $hours, ')
+          ..write('category: $category, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, day, hours);
+  int get hashCode => Object.hash(id, day, hours, category, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is AppAnalytics &&
           other.id == this.id &&
           other.day == this.day &&
-          other.hours == this.hours);
+          other.hours == this.hours &&
+          other.category == this.category &&
+          other.createdAt == this.createdAt);
 }
 
 class AnalyticsEntriesCompanion extends UpdateCompanion<AppAnalytics> {
   final Value<int> id;
   final Value<String> day;
   final Value<double> hours;
+  final Value<String> category;
+  final Value<DateTime> createdAt;
   const AnalyticsEntriesCompanion({
     this.id = const Value.absent(),
     this.day = const Value.absent(),
     this.hours = const Value.absent(),
+    this.category = const Value.absent(),
+    this.createdAt = const Value.absent(),
   });
   AnalyticsEntriesCompanion.insert({
     this.id = const Value.absent(),
     required String day,
     required double hours,
+    this.category = const Value.absent(),
+    this.createdAt = const Value.absent(),
   }) : day = Value(day),
        hours = Value(hours);
   static Insertable<AppAnalytics> custom({
     Expression<int>? id,
     Expression<String>? day,
     Expression<double>? hours,
+    Expression<String>? category,
+    Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (day != null) 'day': day,
       if (hours != null) 'hours': hours,
+      if (category != null) 'category': category,
+      if (createdAt != null) 'created_at': createdAt,
     });
   }
 
@@ -1963,11 +2094,15 @@ class AnalyticsEntriesCompanion extends UpdateCompanion<AppAnalytics> {
     Value<int>? id,
     Value<String>? day,
     Value<double>? hours,
+    Value<String>? category,
+    Value<DateTime>? createdAt,
   }) {
     return AnalyticsEntriesCompanion(
       id: id ?? this.id,
       day: day ?? this.day,
       hours: hours ?? this.hours,
+      category: category ?? this.category,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -1983,6 +2118,12 @@ class AnalyticsEntriesCompanion extends UpdateCompanion<AppAnalytics> {
     if (hours.present) {
       map['hours'] = Variable<double>(hours.value);
     }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
     return map;
   }
 
@@ -1991,7 +2132,9 @@ class AnalyticsEntriesCompanion extends UpdateCompanion<AppAnalytics> {
     return (StringBuffer('AnalyticsEntriesCompanion(')
           ..write('id: $id, ')
           ..write('day: $day, ')
-          ..write('hours: $hours')
+          ..write('hours: $hours, ')
+          ..write('category: $category, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -2534,6 +2677,7 @@ typedef $$FocusPresetsTableCreateCompanionBuilder =
       required int focusMin,
       required int breakMin,
       Value<bool> isCustom,
+      Value<String> tag,
     });
 typedef $$FocusPresetsTableUpdateCompanionBuilder =
     FocusPresetsCompanion Function({
@@ -2544,6 +2688,7 @@ typedef $$FocusPresetsTableUpdateCompanionBuilder =
       Value<int> focusMin,
       Value<int> breakMin,
       Value<bool> isCustom,
+      Value<String> tag,
     });
 
 class $$FocusPresetsTableFilterComposer
@@ -2587,6 +2732,11 @@ class $$FocusPresetsTableFilterComposer
 
   ColumnFilters<bool> get isCustom => $composableBuilder(
     column: $table.isCustom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tag => $composableBuilder(
+    column: $table.tag,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2634,6 +2784,11 @@ class $$FocusPresetsTableOrderingComposer
     column: $table.isCustom,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get tag => $composableBuilder(
+    column: $table.tag,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FocusPresetsTableAnnotationComposer
@@ -2667,6 +2822,9 @@ class $$FocusPresetsTableAnnotationComposer
 
   GeneratedColumn<bool> get isCustom =>
       $composableBuilder(column: $table.isCustom, builder: (column) => column);
+
+  GeneratedColumn<String> get tag =>
+      $composableBuilder(column: $table.tag, builder: (column) => column);
 }
 
 class $$FocusPresetsTableTableManager
@@ -2707,6 +2865,7 @@ class $$FocusPresetsTableTableManager
                 Value<int> focusMin = const Value.absent(),
                 Value<int> breakMin = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
+                Value<String> tag = const Value.absent(),
               }) => FocusPresetsCompanion(
                 id: id,
                 title: title,
@@ -2715,6 +2874,7 @@ class $$FocusPresetsTableTableManager
                 focusMin: focusMin,
                 breakMin: breakMin,
                 isCustom: isCustom,
+                tag: tag,
               ),
           createCompanionCallback:
               ({
@@ -2725,6 +2885,7 @@ class $$FocusPresetsTableTableManager
                 required int focusMin,
                 required int breakMin,
                 Value<bool> isCustom = const Value.absent(),
+                Value<String> tag = const Value.absent(),
               }) => FocusPresetsCompanion.insert(
                 id: id,
                 title: title,
@@ -2733,6 +2894,7 @@ class $$FocusPresetsTableTableManager
                 focusMin: focusMin,
                 breakMin: breakMin,
                 isCustom: isCustom,
+                tag: tag,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -2939,12 +3101,16 @@ typedef $$AnalyticsEntriesTableCreateCompanionBuilder =
       Value<int> id,
       required String day,
       required double hours,
+      Value<String> category,
+      Value<DateTime> createdAt,
     });
 typedef $$AnalyticsEntriesTableUpdateCompanionBuilder =
     AnalyticsEntriesCompanion Function({
       Value<int> id,
       Value<String> day,
       Value<double> hours,
+      Value<String> category,
+      Value<DateTime> createdAt,
     });
 
 class $$AnalyticsEntriesTableFilterComposer
@@ -2968,6 +3134,16 @@ class $$AnalyticsEntriesTableFilterComposer
 
   ColumnFilters<double> get hours => $composableBuilder(
     column: $table.hours,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2995,6 +3171,16 @@ class $$AnalyticsEntriesTableOrderingComposer
     column: $table.hours,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AnalyticsEntriesTableAnnotationComposer
@@ -3014,6 +3200,12 @@ class $$AnalyticsEntriesTableAnnotationComposer
 
   GeneratedColumn<double> get hours =>
       $composableBuilder(column: $table.hours, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
 
 class $$AnalyticsEntriesTableTableManager
@@ -3052,16 +3244,28 @@ class $$AnalyticsEntriesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> day = const Value.absent(),
                 Value<double> hours = const Value.absent(),
-              }) => AnalyticsEntriesCompanion(id: id, day: day, hours: hours),
+                Value<String> category = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AnalyticsEntriesCompanion(
+                id: id,
+                day: day,
+                hours: hours,
+                category: category,
+                createdAt: createdAt,
+              ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required String day,
                 required double hours,
+                Value<String> category = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
               }) => AnalyticsEntriesCompanion.insert(
                 id: id,
                 day: day,
                 hours: hours,
+                category: category,
+                createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

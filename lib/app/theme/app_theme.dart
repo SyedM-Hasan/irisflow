@@ -14,7 +14,7 @@ class AppTheme {
 
   static ThemeData fromName(String name) {
     switch (name) {
-      case 'Ocean Blue (Dark Mode)':
+      case 'Ocean Blue':
         return _buildDark(
           accent: const Color(0xFF29B6F6),
           accentDark: const Color(0xFF0288D1),
@@ -32,7 +32,7 @@ class AppTheme {
           switchTrackOn: const Color(0xFF29B6F6),
           switchTrackOff: const Color(0xFF1A2F42),
         );
-      case 'Sunset (Dark Mode)':
+      case 'Sunset Gold':
         return _buildDark(
           accent: const Color(0xFFFF7043),
           accentDark: const Color(0xFFE64A19),
