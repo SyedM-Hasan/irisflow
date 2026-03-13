@@ -33,14 +33,31 @@ class StrainAnalysisScreen extends ConsumerWidget {
         ),
         centerTitle: true,
         actions: [
+          if (state.isAnalyzing)
+            const Padding(
+              padding: EdgeInsets.all(14),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.psychology_rounded),
+              tooltip: 'Simulate AI Analysis',
+              onPressed: () =>
+                  ref.read(eyeStrainProvider.notifier).simulateAnalysis(),
+            ),
           IconButton(
-            icon: const Icon(Icons.psychology_rounded),
-            tooltip: 'Simulate AI Analysis',
-            onPressed: () => ref.read(eyeStrainProvider.notifier).runGenkitAnalysis(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.tune_rounded),
-            onPressed: () {},
+            icon: Icon(
+              state.isActiveTracking
+                  ? Icons.videocam_rounded
+                  : Icons.videocam_off_rounded,
+            ),
+            tooltip: state.isActiveTracking ? 'Stop Tracking' : 'Start Tracking',
+            onPressed: () =>
+                ref.read(eyeStrainProvider.notifier).toggleTracking(),
           ),
         ],
       ),
@@ -204,7 +221,8 @@ class StrainAnalysisScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 48),
               ElevatedButton(
-                onPressed: () => ref.read(eyeStrainProvider.notifier).runGenkitAnalysis(),
+                onPressed: () =>
+                    ref.read(eyeStrainProvider.notifier).dismissBreakOverlay(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
@@ -398,7 +416,7 @@ class StrainAnalysisScreen extends ConsumerWidget {
             border: Border.all(color: c.accent.withValues(alpha: 0.2)),
           ),
           child: Text(
-            state.vitalityStatus,
+            state.strainLevel.label,
             style: AppTextStyles.labelLarge.copyWith(color: c.accent),
           ),
         ),
@@ -523,13 +541,17 @@ class StrainAnalysisScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
+                  color: state.strainLevel.badgeColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: state.strainLevel.badgeColor.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Text(
-                  'MODERATE STRAIN',
-                  style: AppTextStyles.labelMedium.copyWith(color: Colors.orange),
+                  state.strainLevel.badge,
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: state.strainLevel.badgeColor,
+                  ),
                 ),
               ),
             ],
