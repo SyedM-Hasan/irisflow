@@ -37,48 +37,80 @@ class AppBottomNavBar extends StatelessWidget {
         child: SizedBox(
           height: 64,
           child: Row(
-            children: List.generate(_items.length, (i) {
-              final selected = i == currentIndex;
-              final item = _items[i];
-              return Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    if (!selected) context.go(item.route);
-                  },
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected ? c.accentSubtle : Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Icon(
-                          item.icon,
-                          color: selected ? c.navActive : c.navInactive,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.label,
-                        style: AppTextStyles.labelMedium.copyWith(
-                          color: selected ? c.navActive : c.navInactive,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+            children: [
+              _buildNavItem(context, _items[0], 0, c),
+              _buildNavItem(context, _items[1], 1, c),
+              _buildCenterButton(context, c),
+              _buildNavItem(context, _items[2], 2, c),
+              _buildNavItem(context, _items[3], 3, c),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    BuildContext context,
+    _NavItem item,
+    int index,
+    AppThemeColors c,
+  ) {
+    final selected = index == currentIndex;
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (!selected) context.go(item.route);
+        },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: selected ? c.accentSubtle : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                item.icon,
+                color: selected ? c.navActive : c.navInactive,
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              item.label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: selected ? c.navActive : c.navInactive,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCenterButton(BuildContext context, AppThemeColors c) {
+    return GestureDetector(
+      onTap: () => context.go(AppRoutes.strainAnalysis),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: c.accent,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: c.accentGlow, blurRadius: 12, spreadRadius: 2),
+          ],
+        ),
+        child: const Icon(
+          Icons.remove_red_eye_rounded,
+          color: Colors.black,
+          size: 24,
         ),
       ),
     );

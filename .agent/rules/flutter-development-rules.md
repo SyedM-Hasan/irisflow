@@ -6,7 +6,7 @@ trigger: always_on
 
 ## General Rules
 
-We use **GetX** for state management, routing, and dependency injection. Follow GetX official patterns. All widgets, utility classes, and helper functions must be reusable.
+We use **Riverpod** for state management and dependency injection, and **GoRouter** for routing. Follow Riverpod official patterns. All widgets, utility classes, and helper functions must be reusable.
 
 ### No Hardcoding Policy
 
@@ -18,58 +18,53 @@ Nothing in pages/widgets should be hardcoded:
 
 > **Layout Primitives Exemption**: `Container`, `Padding`, `Row`, `Column`, `Stack`, `ListView` etc. can be used directly. Functional components (`Text`, `Button`, `Card`) must use theming.
 
-## GetX Usage
+## Riverpod & GoRouter Usage
 
-### Controllers
-- One controller per page
-- Use `Get.lazyPut()` in Bindings (preferred), `Get.put()` for immediate init
-- Retrieve with `Get.find()`
-- Never create controllers inside `build()` methods
+### Providers
+- Use `StateNotifierProvider` or `NotifierProvider` for complex state.
+- Use `FutureProvider` for asynchronous operations.
+- Use `Provider` for basic dependencies.
+- Pass `ref` to access other providers.
+- Maintain providers in the `viewmodels/` directory for each feature.
 
 ### Reactive Variables
 ```dart
-final RxBool isLoading = RxBool(false);
-final RxList<Data> items = <Data>[].obs;
-
-// Workers
-ever(data, (_) => saveData());
-debounce(search, (_) => searchAPI(), time: Duration(seconds: 1));
+final countProvider = StateProvider<int>((ref) => 0);
+final asyncDataProvider = FutureProvider<Data>((ref) async {
+  return ref.watch(apiServiceProvider).fetchData();
+});
 ```
 
-Use `Obx()` for fine-grained updates, `GetX<Controller>` when controller instance needed.
+Use `ref.watch()` for rebuilding on changes, `ref.read()` for one-time reads (e.g., in callbacks).
 
-### Bindings
+### Routing
 ```dart
-class WeatherBinding extends Bindings {
-  void dependencies() {
-    Get.lazyPut(() => WeatherController());
-  }
-}
-```
-
-### Navigation
-```dart
-Get.toNamed('/dashboard');
-Get.toNamed('/weather', arguments: {'city': 'NY'});
-Get.offNamed('/home');  // Replace current
-Get.offAllNamed('/login');  // Replace all
-final args = Get.arguments as Map;
+context.go('/dashboard');
+context.push('/weather', extra: {'city': 'NY'});
+context.pushReplacement('/home');  // Replace current
 ```
 
 ## UI Layer
 
 ### Widgets
-- Prefer `StatelessWidget` with `Obx()`
+- Keep screens in `features/<feature_name>/views/`
+- Prefer `ConsumerWidget` with `ref.watch()` for reactive UI
 - Use `const` constructors wherever possible
-- Avoid `StatefulWidget` unless managing lifecycle (animations, etc.)
+- Avoid `StatefulWidget` unless managing lifecycle (animations, etc.). If needed, use `ConsumerStatefulWidget`.
 
 ```dart
-class DashboardPage extends StatelessWidget {
-  Widget build(BuildContext) => Scaffold(
-    body: Obx(() => controller.isLoading
-      ? CircularProgressIndicator()
-      : WeatherWidget()),
-  );
+class DashboardScreen extends ConsumerWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(loadingProvider);
+    return Scaffold(
+      body: isLoading
+        ? const CircularProgressIndicator()
+        : const WeatherWidget(),
+    );
+  }
 }
 ```
 
@@ -92,31 +87,32 @@ LayoutBuilder(builder: (context, constraints) => constraints.maxWidth > 600 ? Ta
 
 ## State Management
 
-### Separation of Concerns
-- **Controllers**: Business logic, state, API calls
-- **Widgets**: UI rendering, user interactions
-- **Services**: Data persistence, API, platform channels
-- **Models**: Data structures with serialization
+### Architecture and Separation of Concerns
+Following the feature-driven architecture logic:
+- **`models/`**: State classes, immutable data, data structures with serialization.
+- **`viewmodels/`**: Riverpod `StateNotifier` or `Notifier` subclasses handling business logic, state mutation, and interactions.
+- **`views/`**: `ConsumerWidget` screens focused solely on UI rendering.
+- **`shared/services/`**: Data persistence (e.g., Drift), API calls, platform channels.
 
 ### Data Flow
-User action → Controller method → State update → `Obx()` rebuild
+User action → Provider method → State update → `ref.watch()` rebuild
 
 ### Single Source of Truth
-Reactive variables in controllers are the source of truth. Don't duplicate state. Don't mix `setState()` with GetX.
+Providers are the source of truth. Don't duplicate state. Don't mix local `setState()` state with Riverpod global state. Data flows from Drift/SQLite to Providers to Widgets.
 
 ## Performance
 
 ### Rebuilds
 - Use `const` constructors
-- Scope `Obx()` to specific widgets that need updates
+- Scope `ref.watch()` to specific widgets that need updates, or use `ref.select()` to filter rebuilds.
 - Use `ListView.builder` for long lists
 
 ```dart
-// Bad - entire page rebuilds
-Obx(() => Scaffold(body: Column(children: [Header(), Text(value), Footer()])))
+// Bad - entire page rebuilds when any part of state changes
+final state = ref.watch(complexProvider);
 
-// Good - only Text rebuilds
-Column(children: [Header(), Obx(() => Text(value)), Footer()])
+// Good - only rebuilds when specific property changes
+final value = ref.watch(complexProvider.select((s) => s.specificValue));
 ```
 
 ### Memory
@@ -162,7 +158,8 @@ Use `SnackBar` or `AlertDialog` for user-facing errors.
 
 ## Common Packages
 
-- `get` - State management (in use)
+- `flutter_riverpod` - State management (in use)
+- `go_router` - Routing
 - `dio` - HTTP client (in use)
 - `connectivity_plus` - Network checks
 - `get_storage` - Key-value storage (in use)

@@ -24,47 +24,53 @@ Test business logic in isolation. Mock dependencies with `mocktail` or `mockito`
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockApiService extends Mock implements ApiService {}
 
 void main() {
-  late WeatherController controller;
+  late ProviderContainer container;
   late MockApiService mockApi;
 
   setUp(() {
     mockApi = MockApiService();
-    Get.testMode = true;
+    container = ProviderContainer(
+      overrides: [
+        apiServiceProvider.overrideWithValue(mockApi),
+      ],
+    );
   });
 
   tearDown(() {
-    Get.reset();
+    container.dispose();
   });
 
-  group('WeatherController', () {
+  group('WeatherProvider', () {
     test('should update weather on successful fetch', () async {
       when(() => mockApi.getWeather()).thenAnswer((_) async => mockData);
-      controller = WeatherController(mockApi);
+      
+      final controller = container.read(weatherProvider.notifier);
       await controller.fetchWeather();
 
-      expect(controller.currentWeather, equals(mockData));
-      expect(controller.isLoading, isFalse);
+      expect(container.read(weatherProvider).currentWeather, equals(mockData));
+      expect(container.read(weatherProvider).isLoading, isFalse);
     });
 
     test('should set error on API failure', () async {
       when(() => mockApi.getWeather()).thenThrow(Exception('Network error'));
-      controller = WeatherController(mockApi);
+      
+      final controller = container.read(weatherProvider.notifier);
       await controller.fetchWeather();
 
-      expect(controller.errorMessage, contains('Failed'));
+      expect(container.read(weatherProvider).errorMessage, contains('Failed'));
     });
   });
 }
 ```
 
 ### Key Points
-- Test state changes, error handling, reactive variables (`Rx<T>`)
+- Test state changes, error handling, provider state
 - Use `setUp()`/`tearDown()` for test lifecycle
 - Use descriptive test names: `should return celsius when unit is celsius`
 - Group related tests with `group()`
@@ -75,29 +81,36 @@ Test UI rendering and interactions with `testWidgets`.
 
 ```dart
 void main() {
-  setUp(() {
-    Get.testMode = true;
-    Get.put(WeatherController());
-  });
-
-  tearDown(() {
-    Get.reset();
-  });
-
   group('DashboardPage', () {
     testWidgets('should show loading indicator', (tester) async {
-      Get.find<WeatherController>().isLoading.value = true;
-      await tester.pumpWidget(GetMaterialApp(home: DashboardPage()));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            weatherProvider.overrideWith((ref) => WeatherState(isLoading: true)),
+          ],
+          child: MaterialApp(home: DashboardPage()),
+        ),
+      );
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('should navigate on button tap', (tester) async {
-      await tester.pumpWidget(GetMaterialApp(home: DashboardPage()));
+    testWidgets('should refresh on button tap', (tester) async {
+      final mockNotifier = MockWeatherNotifier();
+      
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            weatherProvider.notifier.overrideWithValue(mockNotifier),
+          ],
+          child: MaterialApp(home: DashboardPage()),
+        ),
+      );
+      
       await tester.tap(find.byIcon(Icons.refresh));
       await tester.pumpAndSettle();
 
-      verify(() => Get.find<WeatherController>().refresh()).called(1);
+      verify(() => mockNotifier.refresh()).called(1);
     });
   });
 }
@@ -174,11 +187,11 @@ class MockService extends Mock implements ApiService {}
 when(() => mock.getData()).thenAnswer((_) async => data);
 ```
 
-### Reactive Variables
+### Provider State
 ```dart
-expect(controller.isLoading, isFalse);
-controller.isLoading.value = true;
-expect(controller.isLoading, isTrue);
+expect(container.read(provider).isLoading, isFalse);
+container.read(provider.notifier).setLoading(true);
+expect(container.read(provider).isLoading, isTrue);
 ```
 
 ### Async Tests

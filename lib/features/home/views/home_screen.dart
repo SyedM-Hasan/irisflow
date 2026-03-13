@@ -160,10 +160,7 @@ class _TimerCard extends ConsumerWidget {
                       notifier.timeDisplay,
                       style: AppTextStyles.timerDisplay,
                     ),
-                    Text(
-                      _timerSubtitle(state),
-                      style: AppTextStyles.bodySmall,
-                    ),
+                    Text(_timerSubtitle(state), style: AppTextStyles.bodySmall),
                   ],
                 ),
               ),
@@ -238,8 +235,9 @@ class _TimerCard extends ConsumerWidget {
                   Icon(
                     Icons.repeat_rounded,
                     size: 16,
-                    color:
-                        state.isAutoMode ? c.accent : AppColors.textSecondary,
+                    color: state.isAutoMode
+                        ? c.accent
+                        : AppColors.textSecondary,
                   ),
                   const SizedBox(width: 6),
                   Text(

@@ -63,8 +63,7 @@ class AnalyticsEntries extends Table {
   RealColumn get hours => real()();
   TextColumn get category =>
       text().withDefault(const Constant('Uncategorized'))();
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 // ---------------------------------------------------------------------------
@@ -87,9 +86,7 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 4;
 
   Future<Set<String>> _columnNames(String table) async {
-    final rows = await customSelect(
-      'PRAGMA table_info($table)',
-    ).get();
+    final rows = await customSelect('PRAGMA table_info($table)').get();
     return rows.map((r) => r.read<String>('name')).toSet();
   }
 
@@ -190,10 +187,8 @@ class AppDatabase extends _$AppDatabase {
     return (select(analyticsEntries)
           ..where((t) => t.createdAt.isBetweenValues(start, end))
           ..orderBy([
-            (t) => OrderingTerm(
-              expression: t.createdAt,
-              mode: OrderingMode.asc,
-            ),
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc),
           ]))
         .watch();
   }
@@ -227,9 +222,30 @@ class AppDatabase extends _$AppDatabase {
 
       // Re-insert default presets
       final defaults = [
-        ['Development', '20/20 rule', '20 mins focus, 20 mins break', 20, 20, 'dev'],
-        ['Design Work', '50/5 rule', '50 mins focus, 5 mins break', 50, 5, 'design'],
-        ['Email & Admin', '15/5 rule', '15 mins focus, 5 mins break', 15, 5, 'email'],
+        [
+          'Development',
+          '20/20 rule',
+          '20 mins focus, 20 mins break',
+          20,
+          20,
+          'dev',
+        ],
+        [
+          'Design Work',
+          '50/5 rule',
+          '50 mins focus, 5 mins break',
+          50,
+          5,
+          'design',
+        ],
+        [
+          'Email & Admin',
+          '15/5 rule',
+          '15 mins focus, 5 mins break',
+          15,
+          5,
+          'email',
+        ],
       ];
       for (final d in defaults) {
         await into(focusPresets).insert(

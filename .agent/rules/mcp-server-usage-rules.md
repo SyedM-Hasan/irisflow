@@ -8,7 +8,7 @@ trigger: always_on
 
 This repository has project-specific MCPs configured in `.mcp.json`. Environment variables are set in `.env.local`.
 
-- **context7**: Flutter/Dart docs, GetX API, package docs (pub.dev)
+- **context7**: Flutter/Dart docs, Riverpod API, package docs (pub.dev)
 - **github**: Remote only (issues, PRs, releases) - NOT for local git
 - **trello**: Trello board operations (cards, lists, labels, checklists)
 - **figma**: Figma design access and retrieval
@@ -21,7 +21,7 @@ This repository has project-specific MCPs configured in `.mcp.json`. Environment
 ## When to Use Each MCP
 
 ### Context7 MCP
-Flutter framework docs, GetX API reference, Dart syntax, package docs (Dio, geolocator, get_storage), Material Design 3
+Flutter framework docs, Riverpod API reference, Dart syntax, package docs (Dio, geolocator, get_storage), Material Design 3
 
 ### GitHub MCP
 Create/view issues/PRs on remote, view releases, repo metadata - **NOT** for local git operations

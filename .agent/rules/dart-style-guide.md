@@ -45,12 +45,12 @@ Follow the [Dart Style Guide](https://dart.dev/guides/language/effective-dart/st
 - Examples: `const defaultTimeout = 30`, `const apiBaseUrl = '...'`
 - For enum-like constants, consider using an enum instead
 
-### GetX-Specific Conventions
-- **Controllers**: PascalCase with `Controller` suffix (e.g., `WeatherController`, `LocationController`)
-- **Bindings**: PascalCase with `Binding` suffix (e.g., `WeatherBinding`, `LocationBinding`)
-- **Pages**: PascalCase with `Page` suffix (e.g., `DashboardPage`, `OnboardingPage`)
-- **Reactive variables**: Use `.obs` on Rx types (e.g., `final RxBool isLoading = RxBool(false)`)
-- **Getters**: camelCase for computed properties (e.g., `get currentTemperature => ...`)
+### Riverpod-Specific Conventions
+- **Providers/Notifiers**: PascalCase with `Provider` suffix or `Notifier` suffix (e.g., `weatherProvider`, `LocationNotifier`)
+- **State Classes**: PascalCase with `State` suffix (e.g., `WeatherState`, `LocationState`)
+- **Pages/Screens**: PascalCase with `Page` or `Screen` suffix (e.g., `DashboardScreen`, `OnboardingPage`)
+- **Widgets**: `ConsumerWidget` or `ConsumerStatefulWidget`
+- **Computed Providers**: Create separate providers that select from others
 
 ## Import Organization
 
@@ -67,74 +67,66 @@ import 'package:flutter/services.dart';
 
 // 3. Package imports (alphabetical)
 import 'package:dio/dio.dart';
-import 'package:get/get.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get_storage/get_storage.dart';
 
 // 4. Project imports (relative, grouped by feature)
 import '../models/weather_response.dart';
-import '../services/weather_provider.dart';
-import '../controllers/weather_controller.dart';
+import '../services/weather_service.dart';
+import '../viewmodels/weather_provider.dart';
 ```
 
 ## Code Structure Conventions
 
-### Controllers (GetX)
-- Extend `GetxController`
-- Use `onInit()` for initialization logic
-- Use `onClose()` for cleanup (cancel timers, close streams)
-- Keep controllers focused on one feature/area
+### Providers/Notifiers (Riverpod)
+- Extend `StateNotifier` or `Notifier`
+- Define an immutable state class
+- Keep providers focused on one feature/area
+- Usually located in `features/<feature_name>/viewmodels/`
 
 ```dart
-class WeatherController extends GetxController {
-  // Dependencies
-  final WeatherProvider _weatherProvider = WeatherProvider();
+final weatherProvider = StateNotifierProvider<WeatherNotifier, WeatherState>((ref) {
+  return WeatherNotifier(ref.read(weatherServiceProvider));
+});
 
-  // Reactive state variables
-  final Rx<WeatherResponse?> _currentWeather = Rx<WeatherResponse?>(null);
-  final RxBool _isLoading = RxBool(false);
-  final RxString _errorMessage = RxString('');
+class WeatherNotifier extends StateNotifier<WeatherState> {
+  final WeatherService _service;
 
-  // Getters for computed properties
-  WeatherResponse? get currentWeather => _currentWeather.value;
-  bool get isLoading => _isLoading.value;
-  String get errorMessage => _errorMessage.value;
+  WeatherNotifier(this._service) : super(WeatherState());
 
-  @override
-  void onInit() {
-    super.onInit();
-    // Initialization logic
-  }
-
-  @override
-  void onClose() {
-    // Cleanup logic
-    super.onClose();
+  Future<void> fetchWeather() async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final weather = await _service.getWeather();
+      state = state.copyWith(currentWeather: weather, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString(), isLoading: false);
+    }
   }
 }
 ```
 
 ### Pages/Widgets
-- Prefer `StatelessWidget` with `Obx`/`GetX` for reactive UI
+- Prefer `ConsumerWidget` for reactive UI
 - Use `const` constructors wherever possible
 - Keep build methods under 200 lines
 - Extract complex widgets into separate files
 
 ```dart
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(weatherProvider);
+    
     return Scaffold(
       appBar: AppBar(title: const Text('Dashboard')),
-      body: Obx(() => _buildBody()),
+      body: state.isLoading 
+        ? const CircularProgressIndicator() 
+        : _buildWeather(state.currentWeather),
     );
-  }
-
-  Widget _buildBody() {
-    final controller = Get.find<WeatherController>();
-    // ...
   }
 }
 ```
@@ -267,7 +259,7 @@ Future<WeatherResponse> getCurrentWeather({
 ### Performance
 - **Use `const` constructors** to reduce widget rebuilds
 - **Use `ListView.builder`** instead of `ListView` for long lists
-- **Avoid excessive rebuilds** by wrapping only the specific subtree in `Obx`
+- **Avoid excessive rebuilds** by using `ref.select()` to only rebuild when specific properties change
 - **Implement lazy loading** for images and lists
 
 ### Code Organization
@@ -278,7 +270,7 @@ Future<WeatherResponse> getCurrentWeather({
 
 ```dart
 // lib/core/index.dart
-export 'controllers/index.dart';
+export 'viewmodels/index.dart';
 export 'models/index.dart';
 export 'services/index.dart';
 export 'themes/app_theme.dart';
@@ -307,17 +299,17 @@ linter:
 
 ### ❌ Bad Practices
 ```dart
-// Using setState with GetX
+// Using setState with Riverpod incorrectly
 class MyWidget extends StatefulWidget {
   @override
   _MyWidgetState createState() => _MyWidgetState();
 }
 
-// Creating controllers in build methods
-class MyWidget extends StatelessWidget {
+// Watching whole provider when only one property is needed
+class MyWidget extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.put(WeatherController()); // BAD!
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(weatherProvider); // BAD! if you only need state.isLoading
     return ...
   }
 }
@@ -331,19 +323,13 @@ Text('Hello', style: TextStyle(color: Color(0xFF4A90E2))); // BAD!
 
 ### ✅ Good Practices
 ```dart
-// Using StatelessWidget with Obx
-class MyWidget extends StatelessWidget {
+// Using ConsumerWidget with ref.select
+class MyWidget extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    return Obx(() => Text(controller.value));
-  }
-}
-
-// Creating controllers in bindings or onInit
-class MyBinding extends Bindings {
-  @override
-  void dependencies() {
-    Get.lazyPut(() => WeatherController());
+  Widget build(BuildContext context, WidgetRef ref) {
+    // GOOD! Only rebuilds when isLoading changes
+    final isLoading = ref.watch(weatherProvider.select((s) => s.isLoading));
+    return ...
   }
 }
 

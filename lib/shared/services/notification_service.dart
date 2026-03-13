@@ -7,8 +7,9 @@ class NotificationService {
   final _plugin = FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -24,7 +25,8 @@ class NotificationService {
     // Request POST_NOTIFICATIONS permission on Android 13+
     await _plugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
   }
 
@@ -32,19 +34,14 @@ class NotificationService {
   static const _notificationId = 0;
 
   Future<void> showFocusComplete() => _show(
-        title: 'Focus Session Complete!',
-        body: 'Great work! Time for a well-deserved break.',
-      );
+    title: 'Focus Session Complete!',
+    body: 'Great work! Time for a well-deserved break.',
+  );
 
-  Future<void> showRestComplete() => _show(
-        title: "Break's Over!",
-        body: "Ready to focus again? Let's go!",
-      );
+  Future<void> showRestComplete() =>
+      _show(title: "Break's Over!", body: "Ready to focus again? Let's go!");
 
-  Future<void> _show({
-    required String title,
-    required String body,
-  }) async {
+  Future<void> _show({required String title, required String body}) async {
     const androidDetails = AndroidNotificationDetails(
       'irisflow_timer',
       'Timer Notifications',

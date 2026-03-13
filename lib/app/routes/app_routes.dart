@@ -6,4 +6,6 @@ abstract class AppRoutes {
   static const String modes = '/modes';
   static const String profile = '/profile';
   static const String settings = '/settings';
+  static const String strainAnalysis = '/strain-analysis';
+  static const String calibration = '/calibration';
 }

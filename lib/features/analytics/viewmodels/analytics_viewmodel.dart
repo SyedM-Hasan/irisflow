@@ -52,7 +52,11 @@ class AnalyticsNotifier extends StateNotifier<AnalyticsState> {
     });
   }
 
-  void _processEntries(List<AppAnalytics> entries, DateTime start, DateTime end) {
+  void _processEntries(
+    List<AppAnalytics> entries,
+    DateTime start,
+    DateTime end,
+  ) {
     // 1. Calculate Focus Distribution
     double totalHours = 0;
     final Map<String, double> categoryHours = {};
@@ -62,7 +66,7 @@ class AnalyticsNotifier extends StateNotifier<AnalyticsState> {
     }
 
     final List<Map<String, dynamic>> distribution = [];
-    
+
     // Define explicit tag to title mapping
     final Map<String, String> tagTitles = {
       'dev': 'Development',
@@ -85,34 +89,37 @@ class AnalyticsNotifier extends StateNotifier<AnalyticsState> {
       Colors.pink,
       Colors.purple,
     ];
-    
+
     int colorIndex = 0;
     for (final entry in categoryHours.entries) {
       final tag = entry.key; // Initially saved as tag
       final h = entry.value;
       if (h <= 0) continue;
-      
+
       final title = tagTitles[tag] ?? tag; // Fallback to raw tag if not mapped
-      final color = tagColors[tag] ?? fallbackColors[colorIndex % fallbackColors.length];
-      
+      final color =
+          tagColors[tag] ?? fallbackColors[colorIndex % fallbackColors.length];
+
       final int hrs = h.truncate();
       final int mins = ((h - hrs) * 60).round();
       final timeStr = hrs > 0 ? '${hrs}h ${mins}m' : '${mins}m';
-      
+
       distribution.add({
         'label': title,
         'time': timeStr,
         'percent': totalHours > 0 ? h / totalHours : 0.0,
         'color': color,
       });
-      
+
       if (!tagColors.containsKey(tag)) {
         colorIndex++;
       }
     }
 
     // Sort by most hours to least
-    distribution.sort((a, b) => (b['percent'] as double).compareTo(a['percent'] as double));
+    distribution.sort(
+      (a, b) => (b['percent'] as double).compareTo(a['percent'] as double),
+    );
 
     // 2. Calculate Chart Data
     List<Map<String, dynamic>> chartData = [];

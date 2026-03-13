@@ -7,6 +7,8 @@ import '../../features/home/views/home_screen.dart';
 import '../../features/modes/views/modes_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
 import '../../features/settings/views/settings_screen.dart';
+import '../../features/eye_strain/views/strain_analysis_screen.dart';
+import '../../features/eye_strain/views/calibration_screen.dart';
 import 'app_routes.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -38,6 +40,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.settings,
         pageBuilder: (context, state) =>
             MaterialPage(key: state.pageKey, child: const SettingsScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.strainAnalysis,
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: StrainAnalysisScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.calibration,
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: CalibrationScreen()),
       ),
     ],
   );

@@ -175,9 +175,7 @@ class HomeNotifier extends StateNotifier<HomeState> {
     await _db.updateStats(
       FocusStatsCompanion(
         sessionsCompleted: Value(currentStats.sessionsCompleted + 1),
-        totalFocusHours: Value(
-          currentStats.totalFocusHours + additionalHours,
-        ),
+        totalFocusHours: Value(currentStats.totalFocusHours + additionalHours),
       ),
     );
 
