@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,78 +34,187 @@ class StrainAnalysisScreen extends ConsumerWidget {
         centerTitle: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.psychology_rounded),
+            tooltip: 'Simulate AI Analysis',
+            onPressed: () => ref.read(eyeStrainProvider.notifier).runGenkitAnalysis(),
+          ),
+          IconButton(
             icon: const Icon(Icons.tune_rounded),
             onPressed: () {},
           ),
         ],
       ),
       bottomNavigationBar: const AppBottomNavBar(currentIndex: -1),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      body: Stack(
+        children: [
+          _buildAdaptiveUIWrapper(
+            context,
+            ref,
+            state,
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTrackingOverview(context, state, c),
+                    const SizedBox(height: 24),
+                    _buildVitalitySection(context, state, c),
+                    const SizedBox(height: 32),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricCard(
+                            context,
+                            'Blink Rate',
+                            '${state.blinkRate}',
+                            '/min',
+                            state.blinkRateTrend,
+                            Icons.waves_rounded,
+                            c,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildMetricCard(
+                            context,
+                            'Openness',
+                            '${state.eyeOpenness}',
+                            'EAR',
+                            state.eyeOpennessTrend,
+                            Icons.visibility_rounded,
+                            c,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _buildAIInsights(context, state, c),
+                    const SizedBox(height: 24),
+                    _buildActivityLevel(context, state, c),
+                    const SizedBox(height: 24),
+                    _buildAutoCorrection(context, state, ref, c),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildActionButton(
+                            context,
+                            'Dimming',
+                            Icons.light_mode_rounded,
+                            c,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildActionButton(
+                            context,
+                            'Font Size',
+                            Icons.text_fields_rounded,
+                            c,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (state.isBreakOverlayVisible) _buildBreakOverlay(context, ref, c),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdaptiveUIWrapper(
+    BuildContext context,
+    WidgetRef ref,
+    EyeStrainState state,
+    Widget child,
+  ) {
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: TextScaler.linear(state.textScaleMultiplier),
+      ),
+      child: ColorFiltered(
+        colorFilter: ColorFilter.mode(
+          Colors.orange.withValues(alpha: state.warmthFilterIntensity),
+          BlendMode.darken,
+        ),
+        child: Stack(
+          children: [
+            child,
+            IgnorePointer(
+              child: Container(
+                color: Colors.black.withValues(alpha: state.brightnessOverlayOpacity),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBreakOverlay(
+    BuildContext context,
+    WidgetRef ref,
+    AppThemeColors c,
+  ) {
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.7),
+        width: double.infinity,
+        height: double.infinity,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildTrackingOverview(context, state, c),
-              const SizedBox(height: 24),
-              _buildVitalitySection(context, state, c),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.timer_rounded,
+                  color: Colors.orangeAccent,
+                  size: 64,
+                ),
+              ),
               const SizedBox(height: 32),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMetricCard(
-                      context,
-                      'Blink Rate',
-                      '${state.blinkRate}',
-                      '/min',
-                      state.blinkRateTrend,
-                      Icons.waves_rounded,
-                      c,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildMetricCard(
-                      context,
-                      'Openness',
-                      '${state.eyeOpenness}',
-                      'EAR',
-                      state.eyeOpennessTrend,
-                      Icons.visibility_rounded,
-                      c,
-                    ),
-                  ),
-                ],
+              Text(
+                'TIME FOR A BREAK',
+                style: AppTextStyles.titleLarge.copyWith(
+                  color: Colors.white,
+                  letterSpacing: 2,
+                ),
               ),
-              const SizedBox(height: 24),
-              _buildAIInsights(context, state, c),
-              const SizedBox(height: 24),
-              _buildActivityLevel(context, state, c),
-              const SizedBox(height: 24),
-              _buildAutoCorrection(context, state, ref, c),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildActionButton(
-                      context,
-                      'Dimming',
-                      Icons.light_mode_rounded,
-                      c,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildActionButton(
-                      context,
-                      'Font Size',
-                      Icons.text_fields_rounded,
-                      c,
-                    ),
-                  ),
-                ],
+              Text(
+                'Your eyes show high strain levels. Follow the 20-20-20 rule now.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  height: 1.5,
+                ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 48),
+              ElevatedButton(
+                onPressed: () => ref.read(eyeStrainProvider.notifier).runGenkitAnalysis(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: const Text("I'M BACK"),
+              ),
             ],
           ),
         ),
@@ -141,9 +251,20 @@ class StrainAnalysisScreen extends ConsumerWidget {
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF4A90E2),
+                    decoration: BoxDecoration(
+                      color: state.isBlinkAlertActive 
+                          ? Colors.redAccent 
+                          : const Color(0xFF4A90E2),
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (state.isBlinkAlertActive 
+                              ? Colors.redAccent 
+                              : const Color(0xFF4A90E2)).withValues(alpha: 0.5),
+                          blurRadius: 4,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -312,6 +433,7 @@ class StrainAnalysisScreen extends ConsumerWidget {
                 title,
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: Colors.white.withValues(alpha: 0.7),
+                  height: 1.5,
                 ),
               ),
             ],
@@ -333,6 +455,7 @@ class StrainAnalysisScreen extends ConsumerWidget {
                 unit,
                 style: AppTextStyles.bodySmall.copyWith(
                   color: Colors.white.withValues(alpha: 0.5),
+                  height: 1.5,
                 ),
               ),
             ],
@@ -583,6 +706,7 @@ class StrainAnalysisScreen extends ConsumerWidget {
                   'Dynamic scaling & brightness',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: Colors.white.withValues(alpha: 0.5),
+                    height: 1.5,
                   ),
                 ),
               ],
