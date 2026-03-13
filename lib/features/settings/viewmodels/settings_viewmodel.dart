@@ -23,6 +23,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
           soundAlerts: true,
           gentleDimming: false,
           restReminders: true,
+          readyTimerEnabled: false,
+          readyDuration: 10,
           selectedTheme: 'Sage Dark',
           themes: ['Sage Dark', 'Ocean Blue', 'Sunset Gold'],
           appVersion: '2.4.0-release',
@@ -39,6 +41,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       soundAlerts: settings.soundAlerts,
       gentleDimming: settings.gentleDimming,
       restReminders: settings.restReminders,
+      readyTimerEnabled: settings.readyTimerEnabled,
+      readyDuration: settings.readyDuration,
       selectedTheme: settings.selectedTheme,
     );
   }
@@ -91,6 +95,30 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     final newValue = !state.restReminders;
     state = state.copyWith(restReminders: newValue);
     _db.updateSettings(AppSettingsCompanion(restReminders: Value(newValue)));
+  }
+
+  void toggleReadyTimer() {
+    final newValue = !state.readyTimerEnabled;
+    state = state.copyWith(readyTimerEnabled: newValue);
+    _db.updateSettings(
+      AppSettingsCompanion(readyTimerEnabled: Value(newValue)),
+    );
+  }
+
+  void incrementReadyDuration() {
+    if (state.readyDuration < 30) {
+      final newValue = state.readyDuration + 5;
+      state = state.copyWith(readyDuration: newValue);
+      _db.updateSettings(AppSettingsCompanion(readyDuration: Value(newValue)));
+    }
+  }
+
+  void decrementReadyDuration() {
+    if (state.readyDuration > 5) {
+      final newValue = state.readyDuration - 5;
+      state = state.copyWith(readyDuration: newValue);
+      _db.updateSettings(AppSettingsCompanion(readyDuration: Value(newValue)));
+    }
   }
 
   void selectTheme(String theme) {

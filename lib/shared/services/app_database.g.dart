@@ -91,6 +91,33 @@ class $AppSettingsTable extends AppSettings
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _readyTimerEnabledMeta = const VerificationMeta(
+    'readyTimerEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> readyTimerEnabled = GeneratedColumn<bool>(
+    'ready_timer_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("ready_timer_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _readyDurationMeta = const VerificationMeta(
+    'readyDuration',
+  );
+  @override
+  late final GeneratedColumn<int> readyDuration = GeneratedColumn<int>(
+    'ready_duration',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(10),
+  );
   static const VerificationMeta _selectedThemeMeta = const VerificationMeta(
     'selectedTheme',
   );
@@ -123,6 +150,8 @@ class $AppSettingsTable extends AppSettings
     soundAlerts,
     gentleDimming,
     restReminders,
+    readyTimerEnabled,
+    readyDuration,
     selectedTheme,
     appVersion,
   ];
@@ -186,6 +215,24 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('ready_timer_enabled')) {
+      context.handle(
+        _readyTimerEnabledMeta,
+        readyTimerEnabled.isAcceptableOrUnknown(
+          data['ready_timer_enabled']!,
+          _readyTimerEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('ready_duration')) {
+      context.handle(
+        _readyDurationMeta,
+        readyDuration.isAcceptableOrUnknown(
+          data['ready_duration']!,
+          _readyDurationMeta,
+        ),
+      );
+    }
     if (data.containsKey('selected_theme')) {
       context.handle(
         _selectedThemeMeta,
@@ -234,6 +281,14 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}rest_reminders'],
       )!,
+      readyTimerEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}ready_timer_enabled'],
+      )!,
+      readyDuration: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ready_duration'],
+      )!,
       selectedTheme: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}selected_theme'],
@@ -258,6 +313,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final bool soundAlerts;
   final bool gentleDimming;
   final bool restReminders;
+  final bool readyTimerEnabled;
+  final int readyDuration;
   final String selectedTheme;
   final String appVersion;
   const AppSetting({
@@ -267,6 +324,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.soundAlerts,
     required this.gentleDimming,
     required this.restReminders,
+    required this.readyTimerEnabled,
+    required this.readyDuration,
     required this.selectedTheme,
     required this.appVersion,
   });
@@ -279,6 +338,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['sound_alerts'] = Variable<bool>(soundAlerts);
     map['gentle_dimming'] = Variable<bool>(gentleDimming);
     map['rest_reminders'] = Variable<bool>(restReminders);
+    map['ready_timer_enabled'] = Variable<bool>(readyTimerEnabled);
+    map['ready_duration'] = Variable<int>(readyDuration);
     map['selected_theme'] = Variable<String>(selectedTheme);
     map['app_version'] = Variable<String>(appVersion);
     return map;
@@ -292,6 +353,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       soundAlerts: Value(soundAlerts),
       gentleDimming: Value(gentleDimming),
       restReminders: Value(restReminders),
+      readyTimerEnabled: Value(readyTimerEnabled),
+      readyDuration: Value(readyDuration),
       selectedTheme: Value(selectedTheme),
       appVersion: Value(appVersion),
     );
@@ -309,6 +372,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       soundAlerts: serializer.fromJson<bool>(json['soundAlerts']),
       gentleDimming: serializer.fromJson<bool>(json['gentleDimming']),
       restReminders: serializer.fromJson<bool>(json['restReminders']),
+      readyTimerEnabled: serializer.fromJson<bool>(json['readyTimerEnabled']),
+      readyDuration: serializer.fromJson<int>(json['readyDuration']),
       selectedTheme: serializer.fromJson<String>(json['selectedTheme']),
       appVersion: serializer.fromJson<String>(json['appVersion']),
     );
@@ -323,6 +388,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'soundAlerts': serializer.toJson<bool>(soundAlerts),
       'gentleDimming': serializer.toJson<bool>(gentleDimming),
       'restReminders': serializer.toJson<bool>(restReminders),
+      'readyTimerEnabled': serializer.toJson<bool>(readyTimerEnabled),
+      'readyDuration': serializer.toJson<int>(readyDuration),
       'selectedTheme': serializer.toJson<String>(selectedTheme),
       'appVersion': serializer.toJson<String>(appVersion),
     };
@@ -335,6 +402,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     bool? soundAlerts,
     bool? gentleDimming,
     bool? restReminders,
+    bool? readyTimerEnabled,
+    int? readyDuration,
     String? selectedTheme,
     String? appVersion,
   }) => AppSetting(
@@ -344,6 +413,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     soundAlerts: soundAlerts ?? this.soundAlerts,
     gentleDimming: gentleDimming ?? this.gentleDimming,
     restReminders: restReminders ?? this.restReminders,
+    readyTimerEnabled: readyTimerEnabled ?? this.readyTimerEnabled,
+    readyDuration: readyDuration ?? this.readyDuration,
     selectedTheme: selectedTheme ?? this.selectedTheme,
     appVersion: appVersion ?? this.appVersion,
   );
@@ -365,6 +436,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       restReminders: data.restReminders.present
           ? data.restReminders.value
           : this.restReminders,
+      readyTimerEnabled: data.readyTimerEnabled.present
+          ? data.readyTimerEnabled.value
+          : this.readyTimerEnabled,
+      readyDuration: data.readyDuration.present
+          ? data.readyDuration.value
+          : this.readyDuration,
       selectedTheme: data.selectedTheme.present
           ? data.selectedTheme.value
           : this.selectedTheme,
@@ -383,6 +460,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('soundAlerts: $soundAlerts, ')
           ..write('gentleDimming: $gentleDimming, ')
           ..write('restReminders: $restReminders, ')
+          ..write('readyTimerEnabled: $readyTimerEnabled, ')
+          ..write('readyDuration: $readyDuration, ')
           ..write('selectedTheme: $selectedTheme, ')
           ..write('appVersion: $appVersion')
           ..write(')'))
@@ -397,6 +476,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     soundAlerts,
     gentleDimming,
     restReminders,
+    readyTimerEnabled,
+    readyDuration,
     selectedTheme,
     appVersion,
   );
@@ -410,6 +491,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.soundAlerts == this.soundAlerts &&
           other.gentleDimming == this.gentleDimming &&
           other.restReminders == this.restReminders &&
+          other.readyTimerEnabled == this.readyTimerEnabled &&
+          other.readyDuration == this.readyDuration &&
           other.selectedTheme == this.selectedTheme &&
           other.appVersion == this.appVersion);
 }
@@ -421,6 +504,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<bool> soundAlerts;
   final Value<bool> gentleDimming;
   final Value<bool> restReminders;
+  final Value<bool> readyTimerEnabled;
+  final Value<int> readyDuration;
   final Value<String> selectedTheme;
   final Value<String> appVersion;
   const AppSettingsCompanion({
@@ -430,6 +515,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.soundAlerts = const Value.absent(),
     this.gentleDimming = const Value.absent(),
     this.restReminders = const Value.absent(),
+    this.readyTimerEnabled = const Value.absent(),
+    this.readyDuration = const Value.absent(),
     this.selectedTheme = const Value.absent(),
     this.appVersion = const Value.absent(),
   });
@@ -440,6 +527,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.soundAlerts = const Value.absent(),
     this.gentleDimming = const Value.absent(),
     this.restReminders = const Value.absent(),
+    this.readyTimerEnabled = const Value.absent(),
+    this.readyDuration = const Value.absent(),
     this.selectedTheme = const Value.absent(),
     this.appVersion = const Value.absent(),
   });
@@ -450,6 +539,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<bool>? soundAlerts,
     Expression<bool>? gentleDimming,
     Expression<bool>? restReminders,
+    Expression<bool>? readyTimerEnabled,
+    Expression<int>? readyDuration,
     Expression<String>? selectedTheme,
     Expression<String>? appVersion,
   }) {
@@ -460,6 +551,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (soundAlerts != null) 'sound_alerts': soundAlerts,
       if (gentleDimming != null) 'gentle_dimming': gentleDimming,
       if (restReminders != null) 'rest_reminders': restReminders,
+      if (readyTimerEnabled != null) 'ready_timer_enabled': readyTimerEnabled,
+      if (readyDuration != null) 'ready_duration': readyDuration,
       if (selectedTheme != null) 'selected_theme': selectedTheme,
       if (appVersion != null) 'app_version': appVersion,
     });
@@ -472,6 +565,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<bool>? soundAlerts,
     Value<bool>? gentleDimming,
     Value<bool>? restReminders,
+    Value<bool>? readyTimerEnabled,
+    Value<int>? readyDuration,
     Value<String>? selectedTheme,
     Value<String>? appVersion,
   }) {
@@ -482,6 +577,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       soundAlerts: soundAlerts ?? this.soundAlerts,
       gentleDimming: gentleDimming ?? this.gentleDimming,
       restReminders: restReminders ?? this.restReminders,
+      readyTimerEnabled: readyTimerEnabled ?? this.readyTimerEnabled,
+      readyDuration: readyDuration ?? this.readyDuration,
       selectedTheme: selectedTheme ?? this.selectedTheme,
       appVersion: appVersion ?? this.appVersion,
     );
@@ -508,6 +605,12 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     if (restReminders.present) {
       map['rest_reminders'] = Variable<bool>(restReminders.value);
     }
+    if (readyTimerEnabled.present) {
+      map['ready_timer_enabled'] = Variable<bool>(readyTimerEnabled.value);
+    }
+    if (readyDuration.present) {
+      map['ready_duration'] = Variable<int>(readyDuration.value);
+    }
     if (selectedTheme.present) {
       map['selected_theme'] = Variable<String>(selectedTheme.value);
     }
@@ -526,6 +629,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('soundAlerts: $soundAlerts, ')
           ..write('gentleDimming: $gentleDimming, ')
           ..write('restReminders: $restReminders, ')
+          ..write('readyTimerEnabled: $readyTimerEnabled, ')
+          ..write('readyDuration: $readyDuration, ')
           ..write('selectedTheme: $selectedTheme, ')
           ..write('appVersion: $appVersion')
           ..write(')'))
@@ -1923,6 +2028,8 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<bool> soundAlerts,
       Value<bool> gentleDimming,
       Value<bool> restReminders,
+      Value<bool> readyTimerEnabled,
+      Value<int> readyDuration,
       Value<String> selectedTheme,
       Value<String> appVersion,
     });
@@ -1934,6 +2041,8 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<bool> soundAlerts,
       Value<bool> gentleDimming,
       Value<bool> restReminders,
+      Value<bool> readyTimerEnabled,
+      Value<int> readyDuration,
       Value<String> selectedTheme,
       Value<String> appVersion,
     });
@@ -1974,6 +2083,16 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get restReminders => $composableBuilder(
     column: $table.restReminders,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get readyTimerEnabled => $composableBuilder(
+    column: $table.readyTimerEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get readyDuration => $composableBuilder(
+    column: $table.readyDuration,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2027,6 +2146,16 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get readyTimerEnabled => $composableBuilder(
+    column: $table.readyTimerEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get readyDuration => $composableBuilder(
+    column: $table.readyDuration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get selectedTheme => $composableBuilder(
     column: $table.selectedTheme,
     builder: (column) => ColumnOrderings(column),
@@ -2072,6 +2201,16 @@ class $$AppSettingsTableAnnotationComposer
 
   GeneratedColumn<bool> get restReminders => $composableBuilder(
     column: $table.restReminders,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get readyTimerEnabled => $composableBuilder(
+    column: $table.readyTimerEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get readyDuration => $composableBuilder(
+    column: $table.readyDuration,
     builder: (column) => column,
   );
 
@@ -2123,6 +2262,8 @@ class $$AppSettingsTableTableManager
                 Value<bool> soundAlerts = const Value.absent(),
                 Value<bool> gentleDimming = const Value.absent(),
                 Value<bool> restReminders = const Value.absent(),
+                Value<bool> readyTimerEnabled = const Value.absent(),
+                Value<int> readyDuration = const Value.absent(),
                 Value<String> selectedTheme = const Value.absent(),
                 Value<String> appVersion = const Value.absent(),
               }) => AppSettingsCompanion(
@@ -2132,6 +2273,8 @@ class $$AppSettingsTableTableManager
                 soundAlerts: soundAlerts,
                 gentleDimming: gentleDimming,
                 restReminders: restReminders,
+                readyTimerEnabled: readyTimerEnabled,
+                readyDuration: readyDuration,
                 selectedTheme: selectedTheme,
                 appVersion: appVersion,
               ),
@@ -2143,6 +2286,8 @@ class $$AppSettingsTableTableManager
                 Value<bool> soundAlerts = const Value.absent(),
                 Value<bool> gentleDimming = const Value.absent(),
                 Value<bool> restReminders = const Value.absent(),
+                Value<bool> readyTimerEnabled = const Value.absent(),
+                Value<int> readyDuration = const Value.absent(),
                 Value<String> selectedTheme = const Value.absent(),
                 Value<String> appVersion = const Value.absent(),
               }) => AppSettingsCompanion.insert(
@@ -2152,6 +2297,8 @@ class $$AppSettingsTableTableManager
                 soundAlerts: soundAlerts,
                 gentleDimming: gentleDimming,
                 restReminders: restReminders,
+                readyTimerEnabled: readyTimerEnabled,
+                readyDuration: readyDuration,
                 selectedTheme: selectedTheme,
                 appVersion: appVersion,
               ),

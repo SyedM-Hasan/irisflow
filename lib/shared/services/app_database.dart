@@ -17,6 +17,9 @@ class AppSettings extends Table {
   BoolColumn get gentleDimming =>
       boolean().withDefault(const Constant(false))();
   BoolColumn get restReminders => boolean().withDefault(const Constant(true))();
+  BoolColumn get readyTimerEnabled =>
+      boolean().withDefault(const Constant(false))();
+  IntColumn get readyDuration => integer().withDefault(const Constant(10))();
   TextColumn get selectedTheme =>
       text().withDefault(const Constant('Sage Dark'))();
   TextColumn get appVersion => text().withDefault(const Constant('1.0.0'))();
@@ -76,7 +79,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(appSettings, appSettings.readyTimerEnabled);
+        await m.addColumn(appSettings, appSettings.readyDuration);
+      }
+    },
+  );
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'irisflow_db');

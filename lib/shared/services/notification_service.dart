@@ -28,20 +28,20 @@ class NotificationService {
         ?.requestNotificationsPermission();
   }
 
+  // Single ID so every new notification replaces the previous one.
+  static const _notificationId = 0;
+
   Future<void> showFocusComplete() => _show(
-        id: 1,
         title: 'Focus Session Complete!',
         body: 'Great work! Time for a well-deserved break.',
       );
 
   Future<void> showRestComplete() => _show(
-        id: 2,
         title: "Break's Over!",
         body: "Ready to focus again? Let's go!",
       );
 
   Future<void> _show({
-    required int id,
     required String title,
     required String body,
   }) async {
@@ -58,6 +58,6 @@ class NotificationService {
       iOS: darwinDetails,
       macOS: darwinDetails,
     );
-    await _plugin.show(id, title, body, details);
+    await _plugin.show(_notificationId, title, body, details);
   }
 }

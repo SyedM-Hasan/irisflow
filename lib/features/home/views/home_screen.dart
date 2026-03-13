@@ -260,13 +260,33 @@ class _TimerCard extends ConsumerWidget {
   }
 
   String _badgeLabel(HomeState state) {
-    if (state.timerState == TimerState.idle) return 'READY';
-    return state.timerPhase == TimerPhase.focus ? 'FOCUS' : 'REST';
+    if (state.timerState == TimerState.idle &&
+        state.timerPhase == TimerPhase.focus) {
+      return 'READY';
+    }
+    switch (state.timerPhase) {
+      case TimerPhase.focus:
+        return 'FOCUS';
+      case TimerPhase.ready:
+        return 'PREP';
+      case TimerPhase.rest:
+        return 'REST';
+    }
   }
 
   String _timerSubtitle(HomeState state) {
-    if (state.timerState == TimerState.idle) return 'Ready';
-    return state.timerPhase == TimerPhase.focus ? 'Focus Time' : 'Rest Time';
+    if (state.timerState == TimerState.idle &&
+        state.timerPhase == TimerPhase.focus) {
+      return 'Ready';
+    }
+    switch (state.timerPhase) {
+      case TimerPhase.focus:
+        return 'Focus Time';
+      case TimerPhase.ready:
+        return 'Get Ready...';
+      case TimerPhase.rest:
+        return 'Rest Time';
+    }
   }
 }
 

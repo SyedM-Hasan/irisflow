@@ -13,10 +13,11 @@ import '../../modes/viewmodels/modes_viewmodel.dart';
 
 enum TimerState { idle, running, paused }
 
-enum TimerPhase { focus, rest }
+enum TimerPhase { focus, ready, rest }
 
 class HomeState {
   final int seconds;
+  final int readyTotalSeconds; // used for progress during ready phase
   final TimerState timerState;
   final TimerPhase timerPhase;
   final bool isAutoMode;
@@ -27,6 +28,7 @@ class HomeState {
 
   const HomeState({
     required this.seconds,
+    required this.readyTotalSeconds,
     required this.timerState,
     required this.timerPhase,
     required this.isAutoMode,
@@ -38,6 +40,7 @@ class HomeState {
 
   HomeState copyWith({
     int? seconds,
+    int? readyTotalSeconds,
     TimerState? timerState,
     TimerPhase? timerPhase,
     bool? isAutoMode,
@@ -48,6 +51,7 @@ class HomeState {
   }) {
     return HomeState(
       seconds: seconds ?? this.seconds,
+      readyTotalSeconds: readyTotalSeconds ?? this.readyTotalSeconds,
       timerState: timerState ?? this.timerState,
       timerPhase: timerPhase ?? this.timerPhase,
       isAutoMode: isAutoMode ?? this.isAutoMode,
@@ -67,11 +71,14 @@ class HomeNotifier extends StateNotifier<HomeState> {
   final AppDatabase _db;
   final Ref _ref;
   Timer? _timer;
+  // Tracks which phase follows the current ready countdown
+  TimerPhase _nextPhaseAfterReady = TimerPhase.rest;
 
   HomeNotifier(this._db, this._ref)
     : super(
         const HomeState(
           seconds: 25 * 60,
+          readyTotalSeconds: 0,
           timerState: TimerState.idle,
           timerPhase: TimerPhase.focus,
           isAutoMode: false,
@@ -116,6 +123,10 @@ class HomeNotifier extends StateNotifier<HomeState> {
   }
 
   double get progress {
+    if (state.timerPhase == TimerPhase.ready) {
+      final total = state.readyTotalSeconds;
+      return total == 0 ? 0 : 1 - (state.seconds / total);
+    }
     final modes = _ref.read(modesProvider);
     if (state.selectedPresetIndex < 0 ||
         state.selectedPresetIndex >= modes.presets.length) {
@@ -142,10 +153,13 @@ class HomeNotifier extends StateNotifier<HomeState> {
         state = state.copyWith(seconds: state.seconds - 1);
       } else {
         _timer?.cancel();
-        if (state.timerPhase == TimerPhase.focus) {
-          await _onFocusComplete();
-        } else {
-          await _onRestComplete();
+        switch (state.timerPhase) {
+          case TimerPhase.focus:
+            await _onFocusComplete();
+          case TimerPhase.ready:
+            await _onReadyComplete();
+          case TimerPhase.rest:
+            await _onRestComplete();
         }
       }
     });
@@ -182,21 +196,54 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
     await NotificationService.instance.showFocusComplete();
 
-    if (state.isAutoMode) {
-      // Auto-start rest phase
-      state = state.copyWith(
-        seconds: preset.breakMin * 60,
-        timerPhase: TimerPhase.rest,
-        timerState: TimerState.idle,
-      );
-      startTimer();
-    } else {
+    if (!state.isAutoMode) {
       state = state.copyWith(
         timerState: TimerState.idle,
         timerPhase: TimerPhase.focus,
         seconds: preset.focusMin * 60,
       );
+      return;
     }
+
+    // Auto mode: ready countdown before rest (if enabled), else go straight to rest
+    final settings = await _db.getSettings();
+    if (settings.readyTimerEnabled) {
+      _nextPhaseAfterReady = TimerPhase.rest;
+      final readySecs = settings.readyDuration;
+      state = state.copyWith(
+        seconds: readySecs,
+        readyTotalSeconds: readySecs,
+        timerPhase: TimerPhase.ready,
+        timerState: TimerState.idle,
+      );
+    } else {
+      state = state.copyWith(
+        seconds: preset.breakMin * 60,
+        timerPhase: TimerPhase.rest,
+        timerState: TimerState.idle,
+      );
+    }
+    startTimer();
+  }
+
+  Future<void> _onReadyComplete() async {
+    final modes = _ref.read(modesProvider);
+    final preset = modes.presets[state.selectedPresetIndex];
+
+    if (_nextPhaseAfterReady == TimerPhase.rest) {
+      state = state.copyWith(
+        seconds: preset.breakMin * 60,
+        timerPhase: TimerPhase.rest,
+        timerState: TimerState.idle,
+      );
+    } else {
+      state = state.copyWith(
+        seconds: preset.focusMin * 60,
+        timerPhase: TimerPhase.focus,
+        timerState: TimerState.idle,
+      );
+    }
+    startTimer();
   }
 
   Future<void> _onRestComplete() async {
@@ -205,21 +252,34 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
     await NotificationService.instance.showRestComplete();
 
-    if (state.isAutoMode) {
-      // Auto-start next focus phase
+    if (!state.isAutoMode) {
       state = state.copyWith(
-        seconds: preset.focusMin * 60,
+        timerState: TimerState.idle,
         timerPhase: TimerPhase.focus,
+        seconds: preset.focusMin * 60,
+      );
+      return;
+    }
+
+    // Auto mode: ready countdown before focus (if enabled), else go straight to focus
+    final settings = await _db.getSettings();
+    if (settings.readyTimerEnabled) {
+      _nextPhaseAfterReady = TimerPhase.focus;
+      final readySecs = settings.readyDuration;
+      state = state.copyWith(
+        seconds: readySecs,
+        readyTotalSeconds: readySecs,
+        timerPhase: TimerPhase.ready,
         timerState: TimerState.idle,
       );
-      startTimer();
     } else {
       state = state.copyWith(
-        timerState: TimerState.idle,
-        timerPhase: TimerPhase.focus,
         seconds: preset.focusMin * 60,
+        timerPhase: TimerPhase.focus,
+        timerState: TimerState.idle,
       );
     }
+    startTimer();
   }
 
   String _getTodayName() {

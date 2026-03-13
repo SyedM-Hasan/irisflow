@@ -4,6 +4,8 @@ class SettingsState {
   final bool soundAlerts;
   final bool gentleDimming;
   final bool restReminders;
+  final bool readyTimerEnabled;
+  final int readyDuration; // seconds
   final String selectedTheme;
   final List<String> themes;
   final String appVersion;
@@ -14,6 +16,8 @@ class SettingsState {
     required this.soundAlerts,
     required this.gentleDimming,
     required this.restReminders,
+    required this.readyTimerEnabled,
+    required this.readyDuration,
     required this.selectedTheme,
     required this.themes,
     required this.appVersion,
@@ -25,6 +29,8 @@ class SettingsState {
     bool? soundAlerts,
     bool? gentleDimming,
     bool? restReminders,
+    bool? readyTimerEnabled,
+    int? readyDuration,
     String? selectedTheme,
   }) {
     return SettingsState(
@@ -33,6 +39,8 @@ class SettingsState {
       soundAlerts: soundAlerts ?? this.soundAlerts,
       gentleDimming: gentleDimming ?? this.gentleDimming,
       restReminders: restReminders ?? this.restReminders,
+      readyTimerEnabled: readyTimerEnabled ?? this.readyTimerEnabled,
+      readyDuration: readyDuration ?? this.readyDuration,
       selectedTheme: selectedTheme ?? this.selectedTheme,
       themes: themes,
       appVersion: appVersion,
