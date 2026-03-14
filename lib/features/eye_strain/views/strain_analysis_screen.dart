@@ -64,87 +64,89 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
         elevation: 0,
         title: Text('Eye Strain Guard', style: AppTextStyles.titleLarge),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.palette_outlined, color: c.accent),
+            tooltip: 'Change Theme',
+            onPressed: () => context.push(AppRoutes.settings),
+          ),
+        ],
       ),
       bottomNavigationBar: const AppBottomNavBar(currentIndex: -1),
       body: Stack(
         children: [
-          _buildAdaptiveUIWrapper(
-            context,
-            ref,
-            state,
-            SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildCameraCard(context, state, c, isLive: isLive),
-                    const SizedBox(height: 24),
-                    _buildVitalitySection(context, state, c),
-                    const SizedBox(height: 32),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildMetricCard(
-                            context,
-                            'Blink Rate',
-                            isLive ? '${state.blinkRate}' : '--',
-                            '/min',
-                            state.blinkRateTrend,
-                            Icons.waves_rounded,
-                            c,
-                            isLive: isLive,
-                          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 10,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCameraCard(context, state, c, isLive: isLive),
+                  const SizedBox(height: 24),
+                  _buildVitalitySection(context, state, c),
+                  const SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMetricCard(
+                          context,
+                          'Blink Rate',
+                          isLive ? '${state.blinkRate}' : '--',
+                          '/min',
+                          state.blinkRateTrend,
+                          Icons.waves_rounded,
+                          c,
+                          isLive: isLive,
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildMetricCard(
-                            context,
-                            'Openness',
-                            isLive ? '${state.eyeOpenness}' : '--',
-                            'EAR',
-                            state.eyeOpennessTrend,
-                            Icons.visibility_rounded,
-                            c,
-                            isLive: isLive,
-                          ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildMetricCard(
+                          context,
+                          'Openness',
+                          isLive ? '${state.eyeOpenness}' : '--',
+                          'EAR',
+                          state.eyeOpennessTrend,
+                          Icons.visibility_rounded,
+                          c,
+                          isLive: isLive,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _buildAIInsights(context, state, c),
-                    const SizedBox(height: 24),
-                    _buildActivityLevel(context, state, c, isLive: isLive),
-                    const SizedBox(height: 24),
-                    _buildAutoCorrection(context, state, ref, c),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildActionButton(
-                            context,
-                            'Dimming',
-                            Icons.light_mode_rounded,
-                            c,
-                          ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildAIInsights(context, state, c),
+                  const SizedBox(height: 24),
+                  _buildActivityLevel(context, state, c, isLive: isLive),
+                  const SizedBox(height: 24),
+                  _buildAutoCorrection(context, state, ref, c),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildActionButton(
+                          context,
+                          'Dimming',
+                          Icons.light_mode_rounded,
+                          c,
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildActionButton(
-                            context,
-                            'Font Size',
-                            Icons.text_fields_rounded,
-                            c,
-                          ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildActionButton(
+                          context,
+                          'Font Size',
+                          Icons.text_fields_rounded,
+                          c,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                ],
               ),
             ),
           ),
@@ -261,37 +263,6 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
                           : Colors.white.withValues(alpha: 0.4),
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdaptiveUIWrapper(
-    BuildContext context,
-    WidgetRef ref,
-    EyeStrainState state,
-    Widget child,
-  ) {
-    return MediaQuery(
-      data: MediaQuery.of(
-        context,
-      ).copyWith(textScaler: TextScaler.linear(state.textScaleMultiplier)),
-      child: ColorFiltered(
-        colorFilter: ColorFilter.mode(
-          Colors.orange.withValues(alpha: state.warmthFilterIntensity),
-          BlendMode.darken,
-        ),
-        child: Stack(
-          children: [
-            child,
-            IgnorePointer(
-              child: Container(
-                color: Colors.black.withValues(
-                  alpha: state.brightnessOverlayOpacity,
                 ),
               ),
             ),
