@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/routes/router.dart';
 import 'app/theme/app_theme.dart';
+import 'app/theme/app_theme_colors.dart';
+import 'features/eye_strain/viewmodels/eye_strain_viewmodel.dart';
 import 'features/profile/viewmodels/profile_viewmodel.dart';
 import 'features/settings/viewmodels/settings_viewmodel.dart';
 import 'shared/services/app_database.dart';
@@ -49,13 +52,105 @@ class IrisFlowApp extends ConsumerWidget {
       settingsProvider.select((s) => s.selectedTheme),
     );
 
+    // Sync device system bars (status bar + nav bar) to the active theme.
+    final theme = AppTheme.fromName(themeName);
+    final colors = theme.extension<AppThemeColors>()!;
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark, // iOS
+        systemNavigationBarColor: colors.navBackground,
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: colors.navBorder,
+      ),
+    );
+
+    // Eye-protection adaptive UI — applied globally so the warmth/dimming
+    // effect covers the entire app, not just the eye strain screen.
+    final warmth = ref.watch(
+      eyeStrainProvider.select((s) => s.warmthFilterIntensity),
+    );
+    final brightness = ref.watch(
+      eyeStrainProvider.select((s) => s.brightnessOverlayOpacity),
+    );
+    final textScale = ref.watch(
+      eyeStrainProvider.select((s) => s.textScaleMultiplier),
+    );
+
     return MaterialApp.router(
       title: 'IrisFlow',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.fromName(themeName),
+      theme: theme,
       themeAnimationDuration: const Duration(milliseconds: 500),
       themeAnimationCurve: Curves.easeInOut,
       routerConfig: router,
+      builder: (context, child) => _EyeProtectionWrapper(
+        warmth: warmth,
+        brightness: brightness,
+        textScale: textScale,
+        child: child!,
+      ),
     );
+  }
+}
+
+/// Applies eye-protection overlays (warmth tint, brightness dim, text scale)
+/// app-wide based on the current [EyeStrainState]. When all values are at
+/// their defaults (warmth=0, brightness=0, textScale=1) this is a zero-cost
+/// pass-through.
+class _EyeProtectionWrapper extends StatelessWidget {
+  final double warmth;
+  final double brightness;
+  final double textScale;
+  final Widget child;
+
+  const _EyeProtectionWrapper({
+    required this.warmth,
+    required this.brightness,
+    required this.textScale,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget result = child;
+
+    // Stack a semi-transparent black layer for dimming.
+    if (brightness > 0) {
+      result = Stack(
+        children: [
+          result,
+          IgnorePointer(
+            child: Container(
+              color: Colors.black.withValues(alpha: brightness),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Apply a warm color tint to reduce blue-light exposure.
+    if (warmth > 0) {
+      result = ColorFiltered(
+        colorFilter: ColorFilter.mode(
+          Colors.orange.withValues(alpha: warmth),
+          BlendMode.darken,
+        ),
+        child: result,
+      );
+    }
+
+    // Scale up text when strain is high to reduce reading effort.
+    if (textScale != 1.0) {
+      result = MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: result,
+      );
+    }
+
+    return result;
   }
 }

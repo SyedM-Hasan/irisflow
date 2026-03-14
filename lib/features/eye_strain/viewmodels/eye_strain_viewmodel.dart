@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -468,6 +469,10 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
   // ── Permissions ────────────────────────────────────────────────────────────────
 
   Future<bool> _requestCameraPermission() async {
+    // Linux/Windows have no camera permission model — always grant.
+    if (!Platform.isAndroid && !Platform.isIOS && !Platform.isMacOS) {
+      return true;
+    }
     final status = await Permission.camera.request();
     return status.isGranted;
   }

@@ -64,89 +64,97 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
         elevation: 0,
         title: Text('Eye Strain Guard', style: AppTextStyles.titleLarge),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.palette_outlined, color: c.accent),
+            tooltip: 'Change Theme',
+            onPressed: () => context.push(AppRoutes.settings),
+          ),
+        ],
       ),
       bottomNavigationBar: const AppBottomNavBar(currentIndex: -1),
       body: Stack(
         children: [
-          _buildAdaptiveUIWrapper(
-            context,
-            ref,
-            state,
-            SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildCameraCard(context, state, c, isLive: isLive),
-                    const SizedBox(height: 24),
-                    _buildVitalitySection(context, state, c),
-                    const SizedBox(height: 32),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildMetricCard(
-                            context,
-                            'Blink Rate',
-                            isLive ? '${state.blinkRate}' : '--',
-                            '/min',
-                            state.blinkRateTrend,
-                            Icons.waves_rounded,
-                            c,
-                            isLive: isLive,
+          Column(
+            children: [
+              // ── Fixed camera header ──────────────────────────────────────
+              _buildCameraCard(context, state, c, isLive: isLive),
+
+              // ── Scrollable content below ─────────────────────────────────
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildVitalitySection(context, state, c),
+                      const SizedBox(height: 32),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildMetricCard(
+                              context,
+                              'Blink Rate',
+                              isLive ? '${state.blinkRate}' : '--',
+                              '/min',
+                              state.blinkRateTrend,
+                              Icons.waves_rounded,
+                              c,
+                              isLive: isLive,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildMetricCard(
-                            context,
-                            'Openness',
-                            isLive ? '${state.eyeOpenness}' : '--',
-                            'EAR',
-                            state.eyeOpennessTrend,
-                            Icons.visibility_rounded,
-                            c,
-                            isLive: isLive,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildMetricCard(
+                              context,
+                              'Openness',
+                              isLive ? '${state.eyeOpenness}' : '--',
+                              'EAR',
+                              state.eyeOpennessTrend,
+                              Icons.visibility_rounded,
+                              c,
+                              isLive: isLive,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _buildAIInsights(context, state, c),
-                    const SizedBox(height: 24),
-                    _buildActivityLevel(context, state, c, isLive: isLive),
-                    const SizedBox(height: 24),
-                    _buildAutoCorrection(context, state, ref, c),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildActionButton(
-                            context,
-                            'Dimming',
-                            Icons.light_mode_rounded,
-                            c,
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      _buildAIInsights(context, state, c),
+                      const SizedBox(height: 24),
+                      _buildActivityLevel(context, state, c, isLive: isLive),
+                      const SizedBox(height: 24),
+                      _buildAutoCorrection(context, state, ref, c),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionButton(
+                              context,
+                              'Dimming',
+                              Icons.light_mode_rounded,
+                              c,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildActionButton(
-                            context,
-                            'Font Size',
-                            Icons.text_fields_rounded,
-                            c,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildActionButton(
+                              context,
+                              'Font Size',
+                              Icons.text_fields_rounded,
+                              c,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 40),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
           if (state.isBreakOverlayVisible) _buildBreakOverlay(context, ref, c),
           if (_showRefreshOverlay) _AnalyzingOverlay(accentColor: c.accent),
@@ -163,13 +171,21 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
     AppThemeColors c, {
     required bool isLive,
   }) {
+    // On Linux/desktop, camera + ML Kit are unavailable — show a static banner.
+    if (!EarDetectionService.isSupported) {
+      return _buildDesktopCameraPlaceholder(c);
+    }
+
     final controller = EarDetectionService.instance.cameraController;
     final cameraReady = state.isCameraReady && controller != null;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(28),
+        bottomRight: Radius.circular(28),
+      ),
       child: SizedBox(
-        height: 200,
+        height: 220,
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
@@ -270,32 +286,99 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
     );
   }
 
-  Widget _buildAdaptiveUIWrapper(
-    BuildContext context,
-    WidgetRef ref,
-    EyeStrainState state,
-    Widget child,
-  ) {
-    return MediaQuery(
-      data: MediaQuery.of(
-        context,
-      ).copyWith(textScaler: TextScaler.linear(state.textScaleMultiplier)),
-      child: ColorFiltered(
-        colorFilter: ColorFilter.mode(
-          Colors.orange.withValues(alpha: state.warmthFilterIntensity),
-          BlendMode.darken,
-        ),
-        child: Stack(
-          children: [
-            child,
-            IgnorePointer(
-              child: Container(
-                color: Colors.black.withValues(
-                  alpha: state.brightnessOverlayOpacity,
+  Widget _buildDesktopCameraPlaceholder(AppThemeColors c) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(28),
+        bottomRight: Radius.circular(28),
+      ),
+      child: SizedBox(
+        height: 220,
+        width: double.infinity,
+        child: Container(
+          color: Colors.black,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Background grid pattern
+              CustomPaint(painter: _DesktopPlaceholderPainter(color: c.accent)),
+              // Content
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: c.accent.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: c.accent.withValues(alpha: 0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.monitor_rounded,
+                        color: c.accent,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Eye Tracking Unavailable',
+                      style: AppTextStyles.titleMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Camera & ML Kit require Android or iOS',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: Colors.white.withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              // Desktop badge
+              Positioned(
+                top: 12,
+                left: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: c.accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: c.accent.withValues(alpha: 0.35),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.desktop_windows_rounded,
+                          color: c.accent, size: 12),
+                      const SizedBox(width: 5),
+                      Text(
+                        'LINUX DESKTOP',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: c.accent,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1341,102 +1424,6 @@ class _DotsIndicatorState extends State<_DotsIndicator>
 }
 
 // ── Painters ──────────────────────────────────────────────────────────────────
-
-class _FaceTrackingPainter extends CustomPainter {
-  final Color color;
-  _FaceTrackingPainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color.withValues(alpha: 0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    // Face outline
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(size.width / 2, size.height / 2 + 10),
-        width: 60,
-        height: 70,
-      ),
-      paint,
-    );
-
-    // Eyes
-    canvas.drawCircle(
-      Offset(size.width / 2 - 15, size.height / 2 - 5),
-      10,
-      paint,
-    );
-    canvas.drawCircle(
-      Offset(size.width / 2 + 15, size.height / 2 - 5),
-      10,
-      paint,
-    );
-
-    // Dotted guide circles
-    final dashPaint = Paint()
-      ..color = color.withValues(alpha: 0.1)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    _drawDashedCircle(
-      canvas,
-      Offset(size.width / 2, size.height / 2),
-      80,
-      40,
-      dashPaint,
-    );
-    _drawDashedCircle(
-      canvas,
-      Offset(size.width / 2, size.height / 2),
-      100,
-      50,
-      dashPaint,
-    );
-
-    // Highlight tracking points
-    final fillPaint = Paint()
-      ..color = color.withValues(alpha: 0.4)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(
-      Offset(size.width / 2 - 15, size.height / 2 - 5),
-      3,
-      fillPaint,
-    );
-    canvas.drawCircle(
-      Offset(size.width / 2 + 15, size.height / 2 - 5),
-      3,
-      fillPaint,
-    );
-  }
-
-  void _drawDashedCircle(
-    Canvas canvas,
-    Offset center,
-    double radius,
-    int dashes,
-    Paint paint,
-  ) {
-    for (int i = 0; i < dashes; i++) {
-      final double startAngle = (2 * math.pi / dashes) * i;
-      final double endAngle = startAngle + (math.pi / dashes);
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        endAngle - startAngle,
-        false,
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 class _VitalityRadialPainter extends CustomPainter {
   final double progress;
   final Color color;
@@ -1493,4 +1480,31 @@ class _VitalityRadialPainter extends CustomPainter {
   bool shouldRepaint(covariant _VitalityRadialPainter oldDelegate) {
     return oldDelegate.progress != progress;
   }
+}
+
+// ── Desktop placeholder painter ────────────────────────────────────────────────
+
+class _DesktopPlaceholderPainter extends CustomPainter {
+  final Color color;
+  _DesktopPlaceholderPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.05)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    const spacing = 32.0;
+    for (double x = 0; x < size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DesktopPlaceholderPainter old) =>
+      old.color != color;
 }
