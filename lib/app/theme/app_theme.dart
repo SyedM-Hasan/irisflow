@@ -147,9 +147,13 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
         titleTextStyle: AppTextStyles.headlineMedium,
-        systemOverlayStyle: const SystemUiOverlayStyle(
+        systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: navBackground,
+          systemNavigationBarIconBrightness: Brightness.light,
+          systemNavigationBarDividerColor: navBorder,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(

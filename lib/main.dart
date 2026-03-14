@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/routes/router.dart';
 import 'app/theme/app_theme.dart';
+import 'app/theme/app_theme_colors.dart';
 import 'features/eye_strain/viewmodels/eye_strain_viewmodel.dart';
 import 'features/profile/viewmodels/profile_viewmodel.dart';
 import 'features/settings/viewmodels/settings_viewmodel.dart';
@@ -49,6 +51,21 @@ class IrisFlowApp extends ConsumerWidget {
     final themeName = ref.watch(
       settingsProvider.select((s) => s.selectedTheme),
     );
+
+    // Sync device system bars (status bar + nav bar) to the active theme.
+    final theme = AppTheme.fromName(themeName);
+    final colors = theme.extension<AppThemeColors>()!;
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark, // iOS
+        systemNavigationBarColor: colors.navBackground,
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: colors.navBorder,
+      ),
+    );
+
     // Eye-protection adaptive UI — applied globally so the warmth/dimming
     // effect covers the entire app, not just the eye strain screen.
     final warmth = ref.watch(
@@ -64,7 +81,7 @@ class IrisFlowApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'IrisFlow',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.fromName(themeName),
+      theme: theme,
       themeAnimationDuration: const Duration(milliseconds: 500),
       themeAnimationCurve: Curves.easeInOut,
       routerConfig: router,
