@@ -10,7 +10,9 @@ import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../app/theme/app_theme_colors.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
+import 'dart:io';
 import '../services/ear_detection_service.dart';
+import '../services/eye_tracker_provider.dart';
 import '../viewmodels/eye_strain_viewmodel.dart';
 
 class StrainAnalysisScreen extends ConsumerStatefulWidget {
@@ -171,12 +173,12 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
     AppThemeColors c, {
     required bool isLive,
   }) {
-    // On Linux/desktop, camera + ML Kit are unavailable — show a static banner.
-    if (!EarDetectionService.isSupported) {
+    // On some platforms, camera + ML Kit are unavailable — show a static banner.
+    if (!ref.read(eyeTrackerProvider).isSupported) {
       return _buildDesktopCameraPlaceholder(c);
     }
 
-    final controller = EarDetectionService.instance.cameraController;
+    final controller = !Platform.isLinux ? EarDetectionService.instance.cameraController : null;
     final cameraReady = state.isCameraReady && controller != null;
 
     return ClipRRect(

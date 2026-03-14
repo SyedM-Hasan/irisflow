@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../models/eye_strain_state.dart';
-import '../services/ear_detection_service.dart';
+import '../services/eye_tracker_provider.dart';
 import '../services/gemini_analysis_service.dart';
 
 export '../models/eye_strain_state.dart';
@@ -55,7 +55,7 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
       _analysisTimer?.cancel();
       _calibrationTimer?.cancel();
       _noFaceTimer?.cancel();
-      EarDetectionService.instance.dispose();
+      ref.read(eyeTrackerProvider).dispose();
     });
     return const EyeStrainState();
   }
@@ -136,17 +136,17 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     // startImageStream on an already-streaming CameraX camera registers a
     // second Analyzer without deregistering the first — that is the root
     // cause of the pigeon channel error.
-    if (EarDetectionService.instance.isRunning) {
-      await EarDetectionService.instance.stopDetection();
+    if (ref.read(eyeTrackerProvider).isRunning) {
+      await ref.read(eyeTrackerProvider).stopDetection();
     }
-    if (!EarDetectionService.instance.isInitialized) {
-      await EarDetectionService.instance.initialize();
+    if (!ref.read(eyeTrackerProvider).isInitialized) {
+      await ref.read(eyeTrackerProvider).initialize();
     }
     state = state.copyWith(isCameraReady: true);
-    EarDetectionService.instance.startDetection();
+    ref.read(eyeTrackerProvider).startDetection();
 
     _earSubscription?.cancel();
-    _earSubscription = EarDetectionService.instance.earStream.listen((sample) {
+    _earSubscription = ref.read(eyeTrackerProvider).earStream.listen((sample) {
       // Only collect neutral samples during step 1 when not paused
       if (!_isDetectionPaused && _calibrationElapsed <= 10) {
         _calibrationNeutralSamples.add(sample.average);
@@ -252,7 +252,7 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
       // are delivered to Dart after the Analyzer is torn down on the native side.
       _earSubscription?.cancel();
       _earSubscription = null;
-      EarDetectionService.instance.stopDetection();
+      ref.read(eyeTrackerProvider).stopDetection();
 
       final neutral = _calibrationNeutralSamples.isNotEmpty
           ? _calibrationNeutralSamples.reduce((a, b) => a + b) /
@@ -275,11 +275,11 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     final granted = await _requestCameraPermission();
     if (!granted) return;
 
-    if (!EarDetectionService.instance.isRunning) {
-      await EarDetectionService.instance.initialize();
+    if (!ref.read(eyeTrackerProvider).isRunning) {
+      await ref.read(eyeTrackerProvider).initialize();
     }
     state = state.copyWith(isCameraReady: true);
-    EarDetectionService.instance.startDetection();
+    ref.read(eyeTrackerProvider).startDetection();
 
     _earBuffer.clear();
     _blinkCount = 0;
@@ -302,7 +302,7 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
       activityData: List.filled(26, 0.0),
     );
 
-    _earSubscription = EarDetectionService.instance.earStream.listen(_onSample);
+    _earSubscription = ref.read(eyeTrackerProvider).earStream.listen(_onSample);
     // _startAnalysisTimer is NOT called here — _resumeCalculation starts it
     // once the first valid face+eye sample arrives.
   }
@@ -311,8 +311,7 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     // Cancel subscription before stopping the stream so no more Dart callbacks
     // fire after the native Analyzer is deregistered.
     _earSubscription?.cancel();
-    _earSubscription = null;
-    EarDetectionService.instance.stopDetection();
+    ref.read(eyeTrackerProvider).stopDetection();
     _analysisTimer?.cancel();
     _analysisTimer = null;
     _noFaceTimer?.cancel();
@@ -470,7 +469,7 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
 
   Future<bool> _requestCameraPermission() async {
     // Linux/Windows have no camera permission model — always grant.
-    if (!Platform.isAndroid && !Platform.isIOS && !Platform.isMacOS) {
+    if (Platform.isLinux || Platform.isWindows) {
       return true;
     }
     final status = await Permission.camera.request();

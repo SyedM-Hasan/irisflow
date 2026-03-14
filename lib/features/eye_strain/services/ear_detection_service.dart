@@ -9,19 +9,21 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import '../models/eye_strain_state.dart';
 
+import 'eye_tracker_interface.dart';
+
 /// Streams real-time [EarSample]s by processing front-camera frames with
 /// ML Kit face detection. Uses the eye-open probability values (0 = closed,
 /// 1 = fully open) as a normalized proxy for the classical EAR metric.
 ///
-/// On Linux (and other non-mobile platforms), camera and ML Kit are
-/// unavailable. All methods are no-ops and [earStream] never emits.
-class EarDetectionService {
+/// This implementation is for mobile platforms (Android/iOS).
+class EarDetectionService implements EyeTracker {
   EarDetectionService._();
 
   static final EarDetectionService instance = EarDetectionService._();
 
   /// True only on platforms where camera + ML Kit are available (Android/iOS).
-  static bool get isSupported => Platform.isAndroid || Platform.isIOS;
+  @override
+  bool get isSupported => Platform.isAndroid || Platform.isIOS;
 
   CameraController? _cameraController;
   FaceDetector? _faceDetector;
@@ -29,6 +31,7 @@ class EarDetectionService {
   final _controller = StreamController<EarSample>.broadcast();
 
   /// Emits one [EarSample] per detected face, at ~2 Hz.
+  @override
   Stream<EarSample> get earStream => _controller.stream;
 
   bool _isProcessing = false;
@@ -41,14 +44,17 @@ class EarDetectionService {
   // Process every 15th frame (~2 Hz at 30 fps) to avoid UI jank.
   static const int _frameSkip = 15;
 
+  @override
   bool get isRunning =>
       _cameraController != null && _cameraController!.value.isStreamingImages;
 
+  @override
   bool get isInitialized => _cameraController?.value.isInitialized ?? false;
 
   /// Exposed so the UI can render a [CameraPreview] overlay.
   CameraController? get cameraController => _cameraController;
 
+  @override
   Future<void> initialize() async {
     if (!isSupported) return;
     final cameras = await availableCameras();
@@ -76,6 +82,7 @@ class EarDetectionService {
     await _cameraController!.initialize();
   }
 
+  @override
   void startDetection() {
     if (!isSupported) return;
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
@@ -94,6 +101,7 @@ class EarDetectionService {
 
   /// Stops the image stream and immediately gates [_onFrame] via [_isActive]
   /// so any callbacks already queued on the platform thread are dropped.
+  @override
   Future<void> stopDetection() async {
     if (!isSupported) return;
     _isActive = false; // gate further _onFrame processing immediately
@@ -106,6 +114,7 @@ class EarDetectionService {
     }
   }
 
+  @override
   Future<void> dispose() async {
     if (!isSupported) return;
     await stopDetection();

@@ -10,6 +10,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../app/theme/app_theme_colors.dart';
 import '../services/ear_detection_service.dart';
+import '../services/eye_tracker_provider.dart';
 import '../viewmodels/eye_strain_viewmodel.dart';
 
 class CalibrationScreen extends ConsumerStatefulWidget {
@@ -37,7 +38,7 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
   void initState() {
     super.initState();
     _initDotAnimation();
-    if (EarDetectionService.isSupported) {
+    if (ref.read(eyeTrackerProvider).isSupported) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(eyeStrainProvider.notifier).startCalibration();
       });
@@ -70,9 +71,8 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
   Widget build(BuildContext context) {
     final c = context.themeColors;
 
-    // Camera + ML Kit are unavailable on Linux/desktop — show a notice and
-    // let the user navigate back instead of starting a broken calibration.
-    if (!EarDetectionService.isSupported) {
+    // Camera + ML Kit are unavailable on some platforms — show a notice.
+    if (!ref.read(eyeTrackerProvider).isSupported) {
       return _buildUnsupportedPlatformScreen(context, c);
     }
 
@@ -161,7 +161,7 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
               _CameraRadarBox(
                 accentColor: c.accent,
                 isCameraReady: state.isCameraReady,
-                cameraController: EarDetectionService.instance.cameraController,
+                cameraController: !Platform.isLinux ? EarDetectionService.instance.cameraController : null,
                 dotPositionAnimation: _dotPosition,
                 isTracking: isTracking,
                 isFaceDetected: state.isFaceDetected,
@@ -243,9 +243,7 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
     BuildContext context,
     AppThemeColors c,
   ) {
-    final platform = Platform.isLinux
-        ? 'Linux'
-        : Platform.isWindows
+    final platform = Platform.isWindows
             ? 'Windows'
             : 'this platform';
 
@@ -286,8 +284,8 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
               ),
               const SizedBox(height: 12),
               Text(
-                'Eye calibration requires a front-facing camera and ML Kit '
-                'face detection, which are only supported on Android and iOS.',
+                'Eye calibration requires a camera and face detection '
+                'support on your device.',
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                   height: 1.6,
