@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/services/app_database.dart';
 import '../../../shared/services/notification_service.dart';
+import '../../modes/models/modes_state.dart';
 import '../../modes/viewmodels/modes_viewmodel.dart';
 
 // ---------------------------------------------------------------------------
@@ -89,7 +90,22 @@ class HomeNotifier extends StateNotifier<HomeState> {
         ),
       ) {
     _listenToStats();
+    _listenToModes();
     _syncWithPreset(0);
+  }
+
+  /// Re-syncs the timer whenever [modesProvider] delivers presets from the DB.
+  /// The initial [_syncWithPreset] call in the constructor runs before the
+  /// Drift stream emits, so the preset list is empty and the sync is a no-op.
+  /// This listener catches the first (and any subsequent) emission so the timer
+  /// always reflects the active preset's duration — but never overrides an
+  /// in-progress session.
+  void _listenToModes() {
+    _ref.listen<ModesState>(modesProvider, (previous, next) {
+      if (next.presets.isNotEmpty && state.timerState == TimerState.idle) {
+        _syncWithPreset(state.selectedPresetIndex);
+      }
+    });
   }
 
   void _listenToStats() {
