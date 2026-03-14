@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,56 +11,39 @@ import '../../../app/theme/app_theme_colors.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
 import '../viewmodels/eye_strain_viewmodel.dart';
 
-class StrainAnalysisScreen extends ConsumerWidget {
+class StrainAnalysisScreen extends ConsumerStatefulWidget {
   const StrainAnalysisScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StrainAnalysisScreen> createState() =>
+      _StrainAnalysisScreenState();
+}
+
+class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
+  bool _showRefreshOverlay = false;
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.themeColors;
     final state = ref.watch(eyeStrainProvider);
+
+    // Hide overlay once analysis finishes.
+    ref.listen(
+      eyeStrainProvider.select((s) => s.isAnalyzing),
+      (wasAnalyzing, isAnalyzing) {
+        if (wasAnalyzing == true && !isAnalyzing && _showRefreshOverlay) {
+          setState(() => _showRefreshOverlay = false);
+        }
+      },
+    );
 
     return Scaffold(
       backgroundColor: c.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => context.go(AppRoutes.home),
-        ),
-        title: Text(
-          'Eye Strain Guard',
-          style: AppTextStyles.titleLarge,
-        ),
+        title: Text('Eye Strain Guard', style: AppTextStyles.titleLarge),
         centerTitle: true,
-        actions: [
-          if (state.isAnalyzing)
-            const Padding(
-              padding: EdgeInsets.all(14),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.psychology_rounded),
-              tooltip: 'Simulate AI Analysis',
-              onPressed: () =>
-                  ref.read(eyeStrainProvider.notifier).simulateAnalysis(),
-            ),
-          IconButton(
-            icon: Icon(
-              state.isActiveTracking
-                  ? Icons.videocam_rounded
-                  : Icons.videocam_off_rounded,
-            ),
-            tooltip: state.isActiveTracking ? 'Stop Tracking' : 'Start Tracking',
-            onPressed: () =>
-                ref.read(eyeStrainProvider.notifier).toggleTracking(),
-          ),
-        ],
       ),
       bottomNavigationBar: const AppBottomNavBar(currentIndex: -1),
       body: Stack(
@@ -70,12 +54,13 @@ class StrainAnalysisScreen extends ConsumerWidget {
             state,
             SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildTrackingOverview(context, state, c),
-                    const SizedBox(height: 24),
                     _buildVitalitySection(context, state, c),
                     const SizedBox(height: 32),
                     Row(
@@ -140,6 +125,8 @@ class StrainAnalysisScreen extends ConsumerWidget {
             ),
           ),
           if (state.isBreakOverlayVisible) _buildBreakOverlay(context, ref, c),
+          if (_showRefreshOverlay)
+            _AnalyzingOverlay(accentColor: c.accent),
         ],
       ),
     );
@@ -152,9 +139,9 @@ class StrainAnalysisScreen extends ConsumerWidget {
     Widget child,
   ) {
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        textScaler: TextScaler.linear(state.textScaleMultiplier),
-      ),
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: TextScaler.linear(state.textScaleMultiplier)),
       child: ColorFiltered(
         colorFilter: ColorFilter.mode(
           Colors.orange.withValues(alpha: state.warmthFilterIntensity),
@@ -165,7 +152,9 @@ class StrainAnalysisScreen extends ConsumerWidget {
             child,
             IgnorePointer(
               child: Container(
-                color: Colors.black.withValues(alpha: state.brightnessOverlayOpacity),
+                color: Colors.black.withValues(
+                  alpha: state.brightnessOverlayOpacity,
+                ),
               ),
             ),
           ],
@@ -226,7 +215,10 @@ class StrainAnalysisScreen extends ConsumerWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 16,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -240,104 +232,6 @@ class StrainAnalysisScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTrackingOverview(
-    BuildContext context,
-    EyeStrainState state,
-    AppThemeColors c,
-  ) {
-    return Container(
-      height: 180,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: c.card.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: state.isDetectionPaused
-                          ? const Color(0xFFF2C94C)
-                          : state.isBlinkAlertActive
-                              ? Colors.redAccent
-                              : const Color(0xFF4A90E2),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: (state.isDetectionPaused
-                                  ? const Color(0xFFF2C94C)
-                                  : state.isBlinkAlertActive
-                                      ? Colors.redAccent
-                                      : const Color(0xFF4A90E2))
-                              .withValues(alpha: 0.5),
-                          blurRadius: 4,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    state.isDetectionPaused
-                        ? 'PAUSED — NO FACE'
-                        : 'ACTIVE TRACKING',
-                    style: AppTextStyles.labelMedium.copyWith(
-                      color: state.isDetectionPaused
-                          ? const Color(0xFFF2C94C)
-                          : Colors.white.withValues(alpha: 0.7),
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Center(
-            child: CustomPaint(
-              size: const Size(120, 100),
-              painter: _FaceTrackingPainter(c.accent),
-            ),
-          ),
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: Row(
-              children: [
-                _buildCircleIconButton(Icons.fact_check_rounded, c),
-                const SizedBox(width: 12),
-                _buildCircleIconButton(Icons.visibility_rounded, c),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCircleIconButton(IconData icon, AppThemeColors c) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, color: Colors.white, size: 18),
-    );
-  }
 
   Widget _buildVitalitySection(
     BuildContext context,
@@ -406,11 +300,7 @@ class StrainAnalysisScreen extends ConsumerWidget {
                     color: c.accent,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.check,
-                    color: Colors.black,
-                    size: 14,
-                  ),
+                  child: const Icon(Icons.check, color: Colors.black, size: 14),
                 ),
               ),
             ],
@@ -548,7 +438,10 @@ class StrainAnalysisScreen extends ConsumerWidget {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: state.strainLevel.badgeColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -594,7 +487,16 @@ class StrainAnalysisScreen extends ConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () => context.push(AppRoutes.calibration),
+                    onPressed: () async {
+                      final didCalibrate =
+                          await context.push<bool>(AppRoutes.calibration);
+                      if ((didCalibrate ?? false) && mounted) {
+                        setState(() => _showRefreshOverlay = true);
+                        ref
+                            .read(eyeStrainProvider.notifier)
+                            .acknowledgeCalibration();
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: c.accent,
                       foregroundColor: Colors.black,
@@ -644,7 +546,10 @@ class StrainAnalysisScreen extends ConsumerWidget {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF4A90E2).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -695,9 +600,24 @@ class StrainAnalysisScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('0s', style: AppTextStyles.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.4))),
-              Text('30s', style: AppTextStyles.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.4))),
-              Text('60s', style: AppTextStyles.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.4))),
+              Text(
+                '0s',
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: Colors.white.withValues(alpha: 0.4),
+                ),
+              ),
+              Text(
+                '30s',
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: Colors.white.withValues(alpha: 0.4),
+                ),
+              ),
+              Text(
+                '60s',
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: Colors.white.withValues(alpha: 0.4),
+                ),
+              ),
             ],
           ),
         ],
@@ -781,6 +701,177 @@ class StrainAnalysisScreen extends ConsumerWidget {
   }
 }
 
+// ── Post-calibration analyzing overlay ─────────────────────────────────────────
+
+class _AnalyzingOverlay extends StatefulWidget {
+  final Color accentColor;
+  const _AnalyzingOverlay({required this.accentColor});
+
+  @override
+  State<_AnalyzingOverlay> createState() => _AnalyzingOverlayState();
+}
+
+class _AnalyzingOverlayState extends State<_AnalyzingOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulse;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+    _scale = Tween(begin: 0.96, end: 1.04).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = widget.accentColor;
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.65),
+        alignment: Alignment.center,
+        child: ScaleTransition(
+          scale: _scale,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: accent.withValues(alpha: 0.35),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.12),
+                  blurRadius: 40,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: accent.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.remove_red_eye_rounded,
+                    color: accent,
+                    size: 38,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'RE-ANALYZING',
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: accent,
+                    letterSpacing: 2.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Applying new calibration baseline\nto your eye strain profile.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                _DotsIndicator(color: accent),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DotsIndicator extends StatefulWidget {
+  final Color color;
+  const _DotsIndicator({required this.color});
+
+  @override
+  State<_DotsIndicator> createState() => _DotsIndicatorState();
+}
+
+class _DotsIndicatorState extends State<_DotsIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, unused) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            final phase = ((_controller.value - i / 3) % 1.0 + 1.0) % 1.0;
+            final opacity = (phase < 0.5 ? phase * 2 : (1.0 - phase) * 2)
+                .clamp(0.2, 1.0);
+            final size = 6.0 + opacity * 4;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Opacity(
+                opacity: opacity,
+                child: Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    color: widget.color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+// ── Painters ──────────────────────────────────────────────────────────────────
+
 class _FaceTrackingPainter extends CustomPainter {
   final Color color;
   _FaceTrackingPainter(this.color);
@@ -803,28 +894,62 @@ class _FaceTrackingPainter extends CustomPainter {
     );
 
     // Eyes
-    canvas.drawCircle(Offset(size.width / 2 - 15, size.height / 2 - 5), 10, paint);
-    canvas.drawCircle(Offset(size.width / 2 + 15, size.height / 2 - 5), 10, paint);
+    canvas.drawCircle(
+      Offset(size.width / 2 - 15, size.height / 2 - 5),
+      10,
+      paint,
+    );
+    canvas.drawCircle(
+      Offset(size.width / 2 + 15, size.height / 2 - 5),
+      10,
+      paint,
+    );
 
     // Dotted guide circles
     final dashPaint = Paint()
       ..color = color.withValues(alpha: 0.1)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
-    
-    _drawDashedCircle(canvas, Offset(size.width / 2, size.height / 2), 80, 40, dashPaint);
-    _drawDashedCircle(canvas, Offset(size.width / 2, size.height / 2), 100, 50, dashPaint);
+
+    _drawDashedCircle(
+      canvas,
+      Offset(size.width / 2, size.height / 2),
+      80,
+      40,
+      dashPaint,
+    );
+    _drawDashedCircle(
+      canvas,
+      Offset(size.width / 2, size.height / 2),
+      100,
+      50,
+      dashPaint,
+    );
 
     // Highlight tracking points
     final fillPaint = Paint()
       ..color = color.withValues(alpha: 0.4)
       ..style = PaintingStyle.fill;
-    
-    canvas.drawCircle(Offset(size.width / 2 - 15, size.height / 2 - 5), 3, fillPaint);
-    canvas.drawCircle(Offset(size.width / 2 + 15, size.height / 2 - 5), 3, fillPaint);
+
+    canvas.drawCircle(
+      Offset(size.width / 2 - 15, size.height / 2 - 5),
+      3,
+      fillPaint,
+    );
+    canvas.drawCircle(
+      Offset(size.width / 2 + 15, size.height / 2 - 5),
+      3,
+      fillPaint,
+    );
   }
 
-  void _drawDashedCircle(Canvas canvas, Offset center, double radius, int dashes, Paint paint) {
+  void _drawDashedCircle(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    int dashes,
+    Paint paint,
+  ) {
     for (int i = 0; i < dashes; i++) {
       final double startAngle = (2 * math.pi / dashes) * i;
       final double endAngle = startAngle + (math.pi / dashes);
@@ -883,7 +1008,10 @@ class _VitalityRadialPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
 
-    final rect = Rect.fromCircle(center: center, radius: radius - strokeWidth / 2);
+    final rect = Rect.fromCircle(
+      center: center,
+      radius: radius - strokeWidth / 2,
+    );
     const startAngle = -math.pi / 2;
     final sweepAngle = 2 * math.pi * progress;
 

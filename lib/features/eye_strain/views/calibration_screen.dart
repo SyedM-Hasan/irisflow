@@ -78,7 +78,7 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
 
     if (state.isCalibrationComplete) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.pop();
+        if (mounted) context.pop(true); // true signals successful completion
       });
     }
 
@@ -155,6 +155,7 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
                 dotPositionAnimation: _dotPosition,
                 isTracking: isTracking,
                 isFaceDetected: state.isFaceDetected,
+                isEyeTracking: state.isEyeTracking,
                 isDetectionPaused: state.isDetectionPaused,
                 leftEyeOpen: state.leftEyeOpen,
                 rightEyeOpen: state.rightEyeOpen,
@@ -261,6 +262,7 @@ class _CameraRadarBox extends StatelessWidget {
   final Animation<Offset> dotPositionAnimation;
   final bool isTracking;
   final bool isFaceDetected;
+  final bool isEyeTracking;
   final bool isDetectionPaused;
   final double leftEyeOpen;
   final double rightEyeOpen;
@@ -272,6 +274,7 @@ class _CameraRadarBox extends StatelessWidget {
     required this.dotPositionAnimation,
     required this.isTracking,
     required this.isFaceDetected,
+    required this.isEyeTracking,
     required this.isDetectionPaused,
     required this.leftEyeOpen,
     required this.rightEyeOpen,
@@ -312,15 +315,18 @@ class _CameraRadarBox extends StatelessWidget {
             else
               _TrackerDot(position: const Offset(0.5, 0.5), color: accentColor),
 
-            // 5 ── Face detection badge (top-right)
+            // 5 ── Face + eye tracking badge (top-right)
             Positioned(
               top: 12,
               right: 12,
-              child: _FaceDetectedBadge(detected: isFaceDetected),
+              child: _FaceDetectedBadge(
+                faceDetected: isFaceDetected,
+                eyeTracking: isEyeTracking,
+              ),
             ),
 
-            // 6 ── Eye openness bars (bottom validation)
-            if (isFaceDetected && !isDetectionPaused)
+            // 6 ── Eye openness bars (bottom validation — only when tracking)
+            if (isFaceDetected && isEyeTracking && !isDetectionPaused)
               Positioned(
                 bottom: 42,
                 left: 14,
@@ -341,11 +347,13 @@ class _CameraRadarBox extends StatelessWidget {
                 child: Text(
                   isDetectionPaused
                       ? 'MOVE CLOSER TO RESUME'
-                      : isTracking
-                          ? 'FOLLOW THE DOT'
-                          : 'LOOK AT CENTER',
+                      : (isFaceDetected && !isEyeTracking)
+                          ? 'ALIGN EYES WITH CAMERA'
+                          : isTracking
+                              ? 'FOLLOW THE DOT'
+                              : 'LOOK AT CENTER',
                   style: AppTextStyles.labelMedium.copyWith(
-                    color: isDetectionPaused
+                    color: isDetectionPaused || (isFaceDetected && !isEyeTracking)
                         ? const Color(0xFFF2C94C)
                         : accentColor,
                     letterSpacing: 2.5,
@@ -395,13 +403,29 @@ class _CameraRadarBox extends StatelessWidget {
 // ── Face detected badge ────────────────────────────────────────────────────────
 
 class _FaceDetectedBadge extends StatelessWidget {
-  final bool detected;
-  const _FaceDetectedBadge({required this.detected});
+  final bool faceDetected;
+  final bool eyeTracking;
+
+  const _FaceDetectedBadge({
+    required this.faceDetected,
+    required this.eyeTracking,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = detected ? const Color(0xFF6FCF97) : const Color(0xFFEB7070);
-    final label = detected ? 'FACE DETECTED' : 'NO FACE';
+    final Color color;
+    final String label;
+
+    if (!faceDetected) {
+      color = const Color(0xFFEB7070); // coral — no face
+      label = 'NO FACE';
+    } else if (!eyeTracking) {
+      color = const Color(0xFFF2C94C); // amber — face but eyes not locked
+      label = 'NO EYE LOCK';
+    } else {
+      color = const Color(0xFF6FCF97); // mint — face + eyes tracking
+      label = 'EYES TRACKING';
+    }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),

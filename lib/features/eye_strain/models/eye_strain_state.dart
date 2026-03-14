@@ -44,6 +44,7 @@ class EyeStrainState {
   final bool isCameraReady;
   final double neutralEar;
   final bool isFaceDetected;
+  final bool isEyeTracking;
   final bool isDetectionPaused;
   final double leftEyeOpen;
   final double rightEyeOpen;
@@ -77,6 +78,7 @@ class EyeStrainState {
     this.isCameraReady = false,
     this.neutralEar = 0.85,
     this.isFaceDetected = false,
+    this.isEyeTracking = false,
     this.isDetectionPaused = false,
     this.leftEyeOpen = 0.0,
     this.rightEyeOpen = 0.0,
@@ -114,6 +116,7 @@ class EyeStrainState {
     bool? isCameraReady,
     double? neutralEar,
     bool? isFaceDetected,
+    bool? isEyeTracking,
     bool? isDetectionPaused,
     double? leftEyeOpen,
     double? rightEyeOpen,
@@ -146,6 +149,7 @@ class EyeStrainState {
       isCameraReady: isCameraReady ?? this.isCameraReady,
       neutralEar: neutralEar ?? this.neutralEar,
       isFaceDetected: isFaceDetected ?? this.isFaceDetected,
+      isEyeTracking: isEyeTracking ?? this.isEyeTracking,
       isDetectionPaused: isDetectionPaused ?? this.isDetectionPaused,
       leftEyeOpen: leftEyeOpen ?? this.leftEyeOpen,
       rightEyeOpen: rightEyeOpen ?? this.rightEyeOpen,
