@@ -12,10 +12,16 @@ import '../models/eye_strain_state.dart';
 /// Streams real-time [EarSample]s by processing front-camera frames with
 /// ML Kit face detection. Uses the eye-open probability values (0 = closed,
 /// 1 = fully open) as a normalized proxy for the classical EAR metric.
+///
+/// On Linux (and other non-mobile platforms), camera and ML Kit are
+/// unavailable. All methods are no-ops and [earStream] never emits.
 class EarDetectionService {
   EarDetectionService._();
 
   static final EarDetectionService instance = EarDetectionService._();
+
+  /// True only on platforms where camera + ML Kit are available (Android/iOS).
+  static bool get isSupported => Platform.isAndroid || Platform.isIOS;
 
   CameraController? _cameraController;
   FaceDetector? _faceDetector;
@@ -44,6 +50,7 @@ class EarDetectionService {
   CameraController? get cameraController => _cameraController;
 
   Future<void> initialize() async {
+    if (!isSupported) return;
     final cameras = await availableCameras();
     final front = cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.front,
@@ -70,6 +77,7 @@ class EarDetectionService {
   }
 
   void startDetection() {
+    if (!isSupported) return;
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
       return;
     }
@@ -87,6 +95,7 @@ class EarDetectionService {
   /// Stops the image stream and immediately gates [_onFrame] via [_isActive]
   /// so any callbacks already queued on the platform thread are dropped.
   Future<void> stopDetection() async {
+    if (!isSupported) return;
     _isActive = false; // gate further _onFrame processing immediately
     if (_cameraController?.value.isStreamingImages == true) {
       try {
@@ -98,6 +107,7 @@ class EarDetectionService {
   }
 
   Future<void> dispose() async {
+    if (!isSupported) return;
     await stopDetection();
     // Small delay so the CameraX native thread drains any buffered frames
     // before the controller is torn down — prevents the pigeon channel error.

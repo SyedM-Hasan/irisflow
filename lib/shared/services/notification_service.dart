@@ -15,10 +15,14 @@ class NotificationService {
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
+    const linuxSettings = LinuxInitializationSettings(
+      defaultActionName: 'Open',
+    );
     const settings = InitializationSettings(
       android: androidSettings,
       iOS: darwinSettings,
       macOS: darwinSettings,
+      linux: linuxSettings,
     );
     await _plugin.initialize(settings);
 
@@ -50,10 +54,12 @@ class NotificationService {
       priority: Priority.high,
     );
     const darwinDetails = DarwinNotificationDetails();
+    const linuxDetails = LinuxNotificationDetails();
     const details = NotificationDetails(
       android: androidDetails,
       iOS: darwinDetails,
       macOS: darwinDetails,
+      linux: linuxDetails,
     );
     await _plugin.show(_notificationId, title, body, details);
   }

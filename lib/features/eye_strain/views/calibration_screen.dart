@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui' show ImageFilter;
 
 import 'package:camera/camera.dart';
@@ -36,9 +37,11 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
   void initState() {
     super.initState();
     _initDotAnimation();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(eyeStrainProvider.notifier).startCalibration();
-    });
+    if (EarDetectionService.isSupported) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(eyeStrainProvider.notifier).startCalibration();
+      });
+    }
   }
 
   void _initDotAnimation() {
@@ -66,6 +69,13 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
   @override
   Widget build(BuildContext context) {
     final c = context.themeColors;
+
+    // Camera + ML Kit are unavailable on Linux/desktop — show a notice and
+    // let the user navigate back instead of starting a broken calibration.
+    if (!EarDetectionService.isSupported) {
+      return _buildUnsupportedPlatformScreen(context, c);
+    }
+
     final state = ref.watch(eyeStrainProvider);
     final isTracking = state.currentStep == 2 && state.isCalibrating;
 
@@ -228,6 +238,73 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
           'Blink naturally and relax your gaze on the center dot. '
               'We are recording your relaxed eye state.',
       };
+
+  Widget _buildUnsupportedPlatformScreen(
+    BuildContext context,
+    AppThemeColors c,
+  ) {
+    final platform = Platform.isLinux
+        ? 'Linux'
+        : Platform.isWindows
+            ? 'Windows'
+            : 'this platform';
+
+    return Scaffold(
+      backgroundColor: c.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () => context.pop(),
+        ),
+        title: const Text('Calibration'),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: c.card,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.videocam_off_rounded,
+                  color: c.accent.withValues(alpha: 0.6),
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'Not Available on $platform',
+                style: AppTextStyles.headlineMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Eye calibration requires a front-facing camera and ML Kit '
+                'face detection, which are only supported on Android and iOS.',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.6,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 36),
+              ElevatedButton(
+                onPressed: () => context.pop(),
+                child: const Text('Go Back'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   void _showHelpDialog(BuildContext context) {
     showDialog<void>(
