@@ -99,9 +99,8 @@ class EyeStrainState {
     this.stepName = 'Neutral Eye Mapping',
     this.eyeVitality = 1.0,
     this.activityData = const [
-      0.3, 0.4, 0.2, 0.5, 0.3, 0.6, 0.4, 0.8, 0.4, 0.5,
-      0.9, 0.7, 0.8, 0.3, 0.5, 0.4, 0.3, 0.6, 0.5, 0.4,
-      0.7, 0.8, 0.5, 0.4, 0.3, 0.5,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ],
     this.brightnessOverlayOpacity = 0.0,
     this.warmthFilterIntensity = 0.0,

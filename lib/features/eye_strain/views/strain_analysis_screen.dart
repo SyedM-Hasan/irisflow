@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,7 @@ import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../app/theme/app_theme_colors.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
+import '../services/ear_detection_service.dart';
 import '../viewmodels/eye_strain_viewmodel.dart';
 
 class StrainAnalysisScreen extends ConsumerStatefulWidget {
@@ -23,19 +25,37 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
   bool _showRefreshOverlay = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Auto-start tracking as soon as the screen is ready.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !ref.read(eyeStrainProvider).isActiveTracking) {
+        ref.read(eyeStrainProvider.notifier).toggleTracking();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final c = context.themeColors;
     final state = ref.watch(eyeStrainProvider);
 
+    // True only when the camera is running, a face is locked, and data flows.
+    final isLive =
+        state.isActiveTracking &&
+        state.isFaceDetected &&
+        !state.isDetectionPaused;
+
     // Hide overlay once analysis finishes.
-    ref.listen(
-      eyeStrainProvider.select((s) => s.isAnalyzing),
-      (wasAnalyzing, isAnalyzing) {
-        if (wasAnalyzing == true && !isAnalyzing && _showRefreshOverlay) {
-          setState(() => _showRefreshOverlay = false);
-        }
-      },
-    );
+    // mounted guard prevents setState after the widget is disposed.
+    ref.listen(eyeStrainProvider.select((s) => s.isAnalyzing), (
+      wasAnalyzing,
+      isAnalyzing,
+    ) {
+      if (wasAnalyzing == true && !isAnalyzing && _showRefreshOverlay && mounted) {
+        setState(() => _showRefreshOverlay = false);
+      }
+    });
 
     return Scaffold(
       backgroundColor: c.background,
@@ -61,6 +81,8 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _buildCameraCard(context, state, c, isLive: isLive),
+                    const SizedBox(height: 24),
                     _buildVitalitySection(context, state, c),
                     const SizedBox(height: 32),
                     Row(
@@ -69,11 +91,12 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
                           child: _buildMetricCard(
                             context,
                             'Blink Rate',
-                            '${state.blinkRate}',
+                            isLive ? '${state.blinkRate}' : '--',
                             '/min',
                             state.blinkRateTrend,
                             Icons.waves_rounded,
                             c,
+                            isLive: isLive,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -81,11 +104,12 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
                           child: _buildMetricCard(
                             context,
                             'Openness',
-                            '${state.eyeOpenness}',
+                            isLive ? '${state.eyeOpenness}' : '--',
                             'EAR',
                             state.eyeOpennessTrend,
                             Icons.visibility_rounded,
                             c,
+                            isLive: isLive,
                           ),
                         ),
                       ],
@@ -93,7 +117,7 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
                     const SizedBox(height: 24),
                     _buildAIInsights(context, state, c),
                     const SizedBox(height: 24),
-                    _buildActivityLevel(context, state, c),
+                    _buildActivityLevel(context, state, c, isLive: isLive),
                     const SizedBox(height: 24),
                     _buildAutoCorrection(context, state, ref, c),
                     const SizedBox(height: 16),
@@ -125,9 +149,123 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
             ),
           ),
           if (state.isBreakOverlayVisible) _buildBreakOverlay(context, ref, c),
-          if (_showRefreshOverlay)
-            _AnalyzingOverlay(accentColor: c.accent),
+          if (_showRefreshOverlay) _AnalyzingOverlay(accentColor: c.accent),
         ],
+      ),
+    );
+  }
+
+  // ── Camera preview card ──────────────────────────────────────────────────────
+
+  Widget _buildCameraCard(
+    BuildContext context,
+    EyeStrainState state,
+    AppThemeColors c, {
+    required bool isLive,
+  }) {
+    final controller = EarDetectionService.instance.cameraController;
+    final cameraReady = state.isCameraReady && controller != null;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
+        height: 200,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ── Camera preview or dark placeholder ──
+            cameraReady
+                ? CameraPreview(controller)
+                : Container(
+                    color: Colors.black,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.videocam_off_rounded,
+                            color: Colors.white.withValues(alpha: 0.25),
+                            size: 36,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            state.isActiveTracking
+                                ? 'Starting camera…'
+                                : 'Camera off',
+                            style: AppTextStyles.labelMedium.copyWith(
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+            // ── Dark scrim ──
+            Container(color: Colors.black.withValues(alpha: 0.35)),
+
+            // ── Face / eye status badge (top-left) ──
+            Positioned(
+              top: 12,
+              left: 14,
+              child: _StatusBadge(
+                isFaceDetected: state.isFaceDetected,
+                isEyeTracking: state.isEyeTracking,
+                isDetectionPaused: state.isDetectionPaused,
+                accentColor: c.accent,
+              ),
+            ),
+
+            // ── Eye openness bars (shown when face is locked) ──
+            if (isLive)
+              Positioned(
+                top: 12,
+                right: 14,
+                child: _CompactEyeBars(
+                  leftOpen: state.leftEyeOpen,
+                  rightOpen: state.rightEyeOpen,
+                  accentColor: c.accent,
+                ),
+              ),
+
+            // ── Start / Pause button (bottom-right) ──
+            Positioned(
+              bottom: 14,
+              right: 14,
+              child: _TrackingToggleButton(
+                isActive: state.isActiveTracking,
+                accentColor: c.accent,
+                onTap: () =>
+                    ref.read(eyeStrainProvider.notifier).toggleTracking(),
+              ),
+            ),
+
+            // ── Status label (bottom-left) ──
+            Positioned(
+              bottom: 18,
+              left: 14,
+              child: Text(
+                isLive
+                    ? 'MONITORING ACTIVE'
+                    : state.isActiveTracking
+                        ? state.isDetectionPaused
+                            ? 'MOVE CLOSER'
+                            : 'WAITING FOR FACE'
+                        : 'MONITORING OFF',
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: isLive
+                      ? c.accent
+                      : state.isActiveTracking
+                          ? const Color(0xFFF2C94C)
+                          : Colors.white.withValues(alpha: 0.4),
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -232,7 +370,6 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
     );
   }
 
-
   Widget _buildVitalitySection(
     BuildContext context,
     EyeStrainState state,
@@ -330,73 +467,91 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
     String unit,
     double trend,
     IconData icon,
-    AppThemeColors c,
-  ) {
+    AppThemeColors c, {
+    bool isLive = true,
+  }) {
     final isNegative = trend < 0;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: c.card.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: c.accent, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  height: 1.5,
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 400),
+      opacity: isLive ? 1.0 : 0.45,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: c.card.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: c.accent, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    height: 1.5,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                value,
-                style: AppTextStyles.headlineMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: Text(
+                    value,
+                    key: ValueKey(value),
+                    style: AppTextStyles.headlineMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                unit,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  height: 1.5,
+                const SizedBox(width: 4),
+                Text(
+                  unit,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    height: 1.5,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                isNegative
-                    ? Icons.trending_down_rounded
-                    : Icons.trending_up_rounded,
-                color: isNegative ? Colors.orange : c.accent,
-                size: 14,
-              ),
-              const SizedBox(width: 4),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Hide trend when not live — stale trend values are misleading.
+            if (isLive)
+              Row(
+                children: [
+                  Icon(
+                    isNegative
+                        ? Icons.trending_down_rounded
+                        : Icons.trending_up_rounded,
+                    color: isNegative ? Colors.orange : c.accent,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${trend > 0 ? '+' : ''}${(trend * 100).toInt()}%',
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: isNegative ? Colors.orange : c.accent,
+                    ),
+                  ),
+                ],
+              )
+            else
               Text(
-                '${trend > 0 ? '+' : ''}${(trend * 100).toInt()}%',
+                'Waiting for face…',
                 style: AppTextStyles.labelMedium.copyWith(
-                  color: isNegative ? Colors.orange : c.accent,
+                  color: Colors.white.withValues(alpha: 0.35),
                 ),
               ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -488,13 +643,21 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () async {
-                      final didCalibrate =
-                          await context.push<bool>(AppRoutes.calibration);
-                      if ((didCalibrate ?? false) && mounted) {
+                      final didCalibrate = await context.push<bool>(
+                        AppRoutes.calibration,
+                      );
+                      if (!mounted) return;
+                      if (didCalibrate ?? false) {
                         setState(() => _showRefreshOverlay = true);
-                        ref
+                        await ref
                             .read(eyeStrainProvider.notifier)
                             .acknowledgeCalibration();
+                      }
+                      // Restart tracking whether calibration completed or was
+                      // cancelled — startCalibration stops it before navigating.
+                      if (mounted &&
+                          !ref.read(eyeStrainProvider).isActiveTracking) {
+                        ref.read(eyeStrainProvider.notifier).toggleTracking();
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -519,8 +682,22 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
   Widget _buildActivityLevel(
     BuildContext context,
     EyeStrainState state,
-    AppThemeColors c,
-  ) {
+    AppThemeColors c, {
+    bool isLive = false,
+  }) {
+    final Color badgeColor;
+    final String badgeLabel;
+    if (isLive) {
+      badgeColor = const Color(0xFF4A90E2);
+      badgeLabel = 'LIVE';
+    } else if (state.isActiveTracking) {
+      badgeColor = const Color(0xFFF2C94C);
+      badgeLabel = state.isDetectionPaused ? 'PAUSED' : 'WAITING…';
+    } else {
+      badgeColor = Colors.white.withValues(alpha: 0.3);
+      badgeLabel = 'OFFLINE';
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -545,30 +722,35 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
                   Text('Activity Level', style: AppTextStyles.titleMedium),
                 ],
               ),
-              Container(
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4A90E2).withValues(alpha: 0.1),
+                  color: badgeColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF4A90E2),
-                        shape: BoxShape.circle,
+                    if (isLive)
+                      _PulseDot(color: badgeColor)
+                    else
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: badgeColor,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
                     const SizedBox(width: 8),
                     Text(
-                      'LIVE',
+                      badgeLabel,
                       style: AppTextStyles.labelMedium.copyWith(
-                        color: const Color(0xFF4A90E2),
+                        color: badgeColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -584,11 +766,13 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: state.activityData.map((val) {
                 return Expanded(
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
                     margin: const EdgeInsets.symmetric(horizontal: 2),
-                    height: 100 * val,
+                    height: (100 * val).clamp(2.0, 100.0),
                     decoration: BoxDecoration(
-                      color: c.accent.withValues(alpha: 0.7),
+                      color: c.accent.withValues(alpha: isLive ? 0.8 : 0.35),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -701,6 +885,289 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
   }
 }
 
+// ── Camera card helpers ────────────────────────────────────────────────────────
+
+class _StatusBadge extends StatelessWidget {
+  final bool isFaceDetected;
+  final bool isEyeTracking;
+  final bool isDetectionPaused;
+  final Color accentColor;
+
+  const _StatusBadge({
+    required this.isFaceDetected,
+    required this.isEyeTracking,
+    required this.isDetectionPaused,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color;
+    final String label;
+    final IconData icon;
+
+    if (!isFaceDetected || isDetectionPaused) {
+      color = const Color(0xFFEB7070);
+      label = 'NO FACE';
+      icon = Icons.face_retouching_off_rounded;
+    } else if (!isEyeTracking) {
+      color = const Color(0xFFF2C94C);
+      label = 'NO EYE LOCK';
+      icon = Icons.visibility_off_rounded;
+    } else {
+      color = const Color(0xFF6FCF97);
+      label = 'EYES TRACKED';
+      icon = Icons.visibility_rounded;
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 13),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactEyeBars extends StatelessWidget {
+  final double leftOpen;
+  final double rightOpen;
+  final Color accentColor;
+
+  const _CompactEyeBars({
+    required this.leftOpen,
+    required this.rightOpen,
+    required this.accentColor,
+  });
+
+  Color _barColor(double v) {
+    if (v >= 0.6) return const Color(0xFF6FCF97);
+    if (v >= 0.3) return const Color(0xFFF2C94C);
+    return const Color(0xFFEB7070);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _EyeRow(label: 'L', value: leftOpen, color: _barColor(leftOpen)),
+              const SizedBox(height: 5),
+              _EyeRow(
+                label: 'R',
+                value: rightOpen,
+                color: _barColor(rightOpen),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EyeRow extends StatelessWidget {
+  final String label;
+  final double value;
+  final Color color;
+
+  const _EyeRow({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.labelMedium.copyWith(
+            color: Colors.white.withValues(alpha: 0.55),
+            fontWeight: FontWeight.bold,
+            fontSize: 10,
+          ),
+        ),
+        const SizedBox(width: 6),
+        SizedBox(
+          width: 52,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: value.clamp(0.0, 1.0),
+              minHeight: 5,
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          value.toStringAsFixed(2),
+          style: AppTextStyles.labelMedium.copyWith(
+            color: color,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TrackingToggleButton extends StatelessWidget {
+  final bool isActive;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  const _TrackingToggleButton({
+    required this.isActive,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : accentColor.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: isActive
+                    ? Colors.white.withValues(alpha: 0.25)
+                    : accentColor.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isActive ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  color: isActive ? Colors.white : accentColor,
+                  size: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isActive ? 'PAUSE' : 'START',
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: isActive ? Colors.white : accentColor,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Pulsing live indicator dot ─────────────────────────────────────────────────
+
+class _PulseDot extends StatefulWidget {
+  final Color color;
+  const _PulseDot({required this.color});
+
+  @override
+  State<_PulseDot> createState() => _PulseDotState();
+}
+
+class _PulseDotState extends State<_PulseDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _scale = Tween(
+      begin: 0.6,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scale,
+      child: Container(
+        width: 6,
+        height: 6,
+        decoration: BoxDecoration(
+          color: widget.color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withValues(alpha: 0.6),
+              blurRadius: 4,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Post-calibration analyzing overlay ─────────────────────────────────────────
 
 class _AnalyzingOverlay extends StatefulWidget {
@@ -723,9 +1190,10 @@ class _AnalyzingOverlayState extends State<_AnalyzingOverlay>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
-    _scale = Tween(begin: 0.96, end: 1.04).animate(
-      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
-    );
+    _scale = Tween(
+      begin: 0.96,
+      end: 1.04,
+    ).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
   }
 
   @override
@@ -846,8 +1314,10 @@ class _DotsIndicatorState extends State<_DotsIndicator>
           mainAxisSize: MainAxisSize.min,
           children: List.generate(3, (i) {
             final phase = ((_controller.value - i / 3) % 1.0 + 1.0) % 1.0;
-            final opacity = (phase < 0.5 ? phase * 2 : (1.0 - phase) * 2)
-                .clamp(0.2, 1.0);
+            final opacity = (phase < 0.5 ? phase * 2 : (1.0 - phase) * 2).clamp(
+              0.2,
+              1.0,
+            );
             final size = 6.0 + opacity * 4;
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 5),

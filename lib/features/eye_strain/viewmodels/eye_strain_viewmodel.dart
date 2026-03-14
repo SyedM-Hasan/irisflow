@@ -127,6 +127,10 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
       stepName: 'Neutral Eye Mapping',
     );
 
+    // If the analysis screen left tracking running, stop it cleanly first so
+    // isActiveTracking is reset and the camera stream has a single owner.
+    if (state.isActiveTracking) _stopTracking();
+
     // Always stop any live stream before (re)starting. Calling
     // startImageStream on an already-streaming CameraX camera registers a
     // second Analyzer without deregistering the first — that is the root
@@ -287,11 +291,14 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
 
     // isActiveTracking must be set before the subscription so _resumeCalculation
     // can start the analysis timer when the first valid sample arrives.
+    // Reset activityData to zeros so the chart visibly fills with real data
+    // instead of carrying over stale or default values.
     state = state.copyWith(
       isActiveTracking: true,
       isFaceDetected: false,
       isEyeTracking: false,
       isDetectionPaused: true,
+      activityData: List.filled(26, 0.0),
     );
 
     _earSubscription = EarDetectionService.instance.earStream.listen(_onSample);
