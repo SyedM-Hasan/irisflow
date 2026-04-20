@@ -52,8 +52,10 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
     _dotPosition = TweenSequence<Offset>(
       List.generate(_waypoints.length - 1, (i) {
         return TweenSequenceItem(
-          tween: Tween(begin: _waypoints[i], end: _waypoints[i + 1])
-              .chain(CurveTween(curve: Curves.easeInOut)),
+          tween: Tween(
+            begin: _waypoints[i],
+            end: _waypoints[i + 1],
+          ).chain(CurveTween(curve: Curves.easeInOut)),
           weight: 1,
         );
       }),
@@ -222,22 +224,22 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
   }
 
   String _headingForStep(int step) => switch (step) {
-        1 => 'Keep Head Still',
-        2 => 'Follow The Dot',
-        _ => 'Blink Naturally',
-      };
+    1 => 'Keep Head Still',
+    2 => 'Follow The Dot',
+    _ => 'Blink Naturally',
+  };
 
   String _instructionForStep(int step) => switch (step) {
-        1 =>
-          'Relax your facial muscles and look directly at the center dot. '
-              'We are mapping your natural eye openness.',
-        2 =>
-          'Follow the moving green dot with your eyes only — keep your head still. '
-              'This maps your full eye range.',
-        _ =>
-          'Blink naturally and relax your gaze on the center dot. '
-              'We are recording your relaxed eye state.',
-      };
+    1 =>
+      'Relax your facial muscles and look directly at the center dot. '
+          'We are mapping your natural eye openness.',
+    2 =>
+      'Follow the moving green dot with your eyes only — keep your head still. '
+          'This maps your full eye range.',
+    _ =>
+      'Blink naturally and relax your gaze on the center dot. '
+          'We are recording your relaxed eye state.',
+  };
 
   Widget _buildUnsupportedPlatformScreen(
     BuildContext context,
@@ -246,8 +248,8 @@ class _CalibrationScreenState extends ConsumerState<CalibrationScreen>
     final platform = Platform.isLinux
         ? 'Linux'
         : Platform.isWindows
-            ? 'Windows'
-            : 'this platform';
+        ? 'Windows'
+        : 'this platform';
 
     return Scaffold(
       backgroundColor: c.background,
@@ -376,9 +378,7 @@ class _CameraRadarBox extends StatelessWidget {
             Container(color: Colors.black.withValues(alpha: 0.38)),
 
             // 3 ── Radar concentric circles + dashed border
-            CustomPaint(
-              painter: _RadarPainter(accentColor: accentColor),
-            ),
+            CustomPaint(painter: _RadarPainter(accentColor: accentColor)),
 
             // 4 ── Animated dot (step 2) or static center dot
             if (isTracking)
@@ -425,12 +425,13 @@ class _CameraRadarBox extends StatelessWidget {
                   isDetectionPaused
                       ? 'MOVE CLOSER TO RESUME'
                       : (isFaceDetected && !isEyeTracking)
-                          ? 'ALIGN EYES WITH CAMERA'
-                          : isTracking
-                              ? 'FOLLOW THE DOT'
-                              : 'LOOK AT CENTER',
+                      ? 'ALIGN EYES WITH CAMERA'
+                      : isTracking
+                      ? 'FOLLOW THE DOT'
+                      : 'LOOK AT CENTER',
                   style: AppTextStyles.labelMedium.copyWith(
-                    color: isDetectionPaused || (isFaceDetected && !isEyeTracking)
+                    color:
+                        isDetectionPaused || (isFaceDetected && !isEyeTracking)
                         ? const Color(0xFFF2C94C)
                         : accentColor,
                     letterSpacing: 2.5,
@@ -728,8 +729,16 @@ class _RadarPainter extends CustomPainter {
     final crossPaint = Paint()
       ..color = accentColor.withValues(alpha: 0.1)
       ..strokeWidth = 1.0;
-    canvas.drawLine(Offset(center.dx, 0), Offset(center.dx, size.height), crossPaint);
-    canvas.drawLine(Offset(0, center.dy), Offset(size.width, center.dy), crossPaint);
+    canvas.drawLine(
+      Offset(center.dx, 0),
+      Offset(center.dx, size.height),
+      crossPaint,
+    );
+    canvas.drawLine(
+      Offset(0, center.dy),
+      Offset(size.width, center.dy),
+      crossPaint,
+    );
   }
 
   @override
@@ -760,9 +769,10 @@ class _PausedOverlayState extends State<_PausedOverlay>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _opacity = Tween(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
-    );
+    _opacity = Tween(
+      begin: 0.5,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
   }
 
   @override

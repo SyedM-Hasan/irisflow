@@ -122,9 +122,7 @@ class _EyeProtectionWrapper extends StatelessWidget {
         children: [
           result,
           IgnorePointer(
-            child: Container(
-              color: Colors.black.withValues(alpha: brightness),
-            ),
+            child: Container(color: Colors.black.withValues(alpha: brightness)),
           ),
         ],
       );
@@ -144,9 +142,9 @@ class _EyeProtectionWrapper extends StatelessWidget {
     // Scale up text when strain is high to reduce reading effort.
     if (textScale != 1.0) {
       result = MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(textScale),
-        ),
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
         child: result,
       );
     }

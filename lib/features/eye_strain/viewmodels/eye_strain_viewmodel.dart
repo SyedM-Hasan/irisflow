@@ -21,6 +21,7 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
   /// Minimum openness for at least one eye to consider tracking valid.
   /// Filters out total ML-kit tracking failures (not normal blinks).
   static const double _eyeQualityThreshold = 0.05;
+
   /// Consecutive low-quality frames before pausing (~4 s at 2 Hz).
   static const int _maxLowQualityFrames = 8;
 
@@ -66,10 +67,7 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
   /// [true]. Seeds the EAR buffer from calibration samples and runs an
   /// immediate Gemini analysis to reflect the new baseline.
   Future<void> acknowledgeCalibration() async {
-    state = state.copyWith(
-      isCalibrationComplete: false,
-      isAnalyzing: true,
-    );
+    state = state.copyWith(isCalibrationComplete: false, isAnalyzing: true);
 
     // Seed the buffer with the neutral calibration samples so Gemini has
     // real eye data to evaluate against the freshly measured baseline.
@@ -111,7 +109,8 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     _noFaceTimer?.cancel();
     _calibrationElapsed = 0;
     _calibrationNeutralSamples.clear();
-    _isDetectionPaused = true; // start paused — timer begins only after face+eyes confirmed
+    _isDetectionPaused =
+        true; // start paused — timer begins only after face+eyes confirmed
     _pausedAt = null;
     _lowQualityFrameCount = 0;
 
@@ -256,7 +255,7 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
 
       final neutral = _calibrationNeutralSamples.isNotEmpty
           ? _calibrationNeutralSamples.reduce((a, b) => a + b) /
-              _calibrationNeutralSamples.length
+                _calibrationNeutralSamples.length
           : 0.85;
 
       state = state.copyWith(
@@ -283,7 +282,8 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
 
     _earBuffer.clear();
     _blinkCount = 0;
-    _isDetectionPaused = true; // start paused — analysis begins only after face+eyes confirmed
+    _isDetectionPaused =
+        true; // start paused — analysis begins only after face+eyes confirmed
     _pausedAt = null;
     _lowQualityFrameCount = 0;
     _prevBlinkRate = state.blinkRate;
@@ -349,7 +349,8 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     } else {
       _lowQualityFrameCount++;
       // Sustained poor eye data → pause (same as losing the face)
-      if (_lowQualityFrameCount >= _maxLowQualityFrames && !_isDetectionPaused) {
+      if (_lowQualityFrameCount >= _maxLowQualityFrames &&
+          !_isDetectionPaused) {
         _pauseCalculation();
         return;
       }
@@ -385,10 +386,8 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
     if (_wasBlinking && !isBlinking) _blinkCount++;
     _wasBlinking = isBlinking;
 
-    final elapsedMin = DateTime.now()
-            .difference(_blinkWindowStart)
-            .inSeconds
-            .clamp(1, 3600) /
+    final elapsedMin =
+        DateTime.now().difference(_blinkWindowStart).inSeconds.clamp(1, 3600) /
         60.0;
     final currentBlinkRate = (_blinkCount / elapsedMin).round().clamp(0, 60);
     final blinkRateTrend = _prevBlinkRate > 0
@@ -503,13 +502,13 @@ class EyeStrainViewModel extends Notifier<EyeStrainState> {
           neutralEar: state.neutralEar,
         )
         .then((analysis) {
-      _applyAdaptiveUI(analysis.strainLevel);
-      state = state.copyWith(
-        strainLevel: analysis.strainLevel,
-        eyeVitality: analysis.eyeVitality,
-        aiRecommendation: analysis.recommendation,
-      );
-    });
+          _applyAdaptiveUI(analysis.strainLevel);
+          state = state.copyWith(
+            strainLevel: analysis.strainLevel,
+            eyeVitality: analysis.eyeVitality,
+            aiRecommendation: analysis.recommendation,
+          );
+        });
   }
 }
 

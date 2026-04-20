@@ -52,7 +52,10 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
       wasAnalyzing,
       isAnalyzing,
     ) {
-      if (wasAnalyzing == true && !isAnalyzing && _showRefreshOverlay && mounted) {
+      if (wasAnalyzing == true &&
+          !isAnalyzing &&
+          _showRefreshOverlay &&
+          mounted) {
         setState(() => _showRefreshOverlay = false);
       }
     });
@@ -265,16 +268,16 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
                 isLive
                     ? 'MONITORING ACTIVE'
                     : state.isActiveTracking
-                        ? state.isDetectionPaused
-                            ? 'MOVE CLOSER'
-                            : 'WAITING FOR FACE'
-                        : 'MONITORING OFF',
+                    ? state.isDetectionPaused
+                          ? 'MOVE CLOSER'
+                          : 'WAITING FOR FACE'
+                    : 'MONITORING OFF',
                 style: AppTextStyles.labelMedium.copyWith(
                   color: isLive
                       ? c.accent
                       : state.isActiveTracking
-                          ? const Color(0xFFF2C94C)
-                          : Colors.white.withValues(alpha: 0.4),
+                      ? const Color(0xFFF2C94C)
+                      : Colors.white.withValues(alpha: 0.4),
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w700,
                 ),
@@ -361,8 +364,11 @@ class _StrainAnalysisScreenState extends ConsumerState<StrainAnalysisScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.desktop_windows_rounded,
-                          color: c.accent, size: 12),
+                      Icon(
+                        Icons.desktop_windows_rounded,
+                        color: c.accent,
+                        size: 12,
+                      ),
                       const SizedBox(width: 5),
                       Text(
                         'LINUX DESKTOP',

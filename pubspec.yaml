@@ -1,5 +1,5 @@
 name: irisflow
-description: "A new Flutter project."
+description: "IrisFlow - AI-powered eye health and focus timer."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -31,23 +31,26 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-  get: ^4.6.6
+  # State Management & Routing
   flutter_riverpod: ^2.6.1
   go_router: ^14.0.0
+
+  # UI Components & Styling
   google_fonts: ^8.0.2
   fl_chart: ^1.1.1
   percent_indicator: ^4.2.5
+
+  # Storage & Data
   shared_preferences: ^2.5.4
   drift: ^2.20.0
   drift_flutter: ^0.3.0
   sqlite3_flutter_libs: ^0.6.0+eol
-  path_provider: ^2.1.2
-  path: ^1.9.0
+
+  # Notifications & Internationalization
   flutter_local_notifications: ^18.0.0
   intl: ^0.20.2
+
+  # AI & Hardware
   camera: ^0.11.0
   google_mlkit_face_detection: ^0.11.0
   google_generative_ai: ^0.4.6
@@ -57,11 +60,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
+  # Linting & Code Generation
   flutter_lints: ^6.0.0
   drift_dev: ^2.20.0
   build_runner: ^2.4.8

@@ -91,10 +91,11 @@ class GeminiAnalysisService {
     final avg = values.reduce((a, b) => a + b) / values.length;
     final variance =
         values.map((v) => (v - avg) * (v - avg)).reduce((a, b) => a + b) /
-            values.length;
+        values.length;
     final stdDev = math.sqrt(variance);
     final minEar = values.reduce(math.min);
-    final elapsed = buffer.last.timestamp
+    final elapsed =
+        buffer.last.timestamp
             .difference(buffer.first.timestamp)
             .inSeconds
             .clamp(1, 120) /
@@ -113,7 +114,8 @@ class GeminiAnalysisService {
   }
 
   Future<StrainAnalysis> _geminiAnalysis(_Metrics m) async {
-    final prompt = '''
+    final prompt =
+        '''
 You are an ophthalmology assistant analyzing real-time eye monitoring data.
 
 60-second session metrics:
@@ -143,7 +145,8 @@ Respond with ONLY valid JSON (no markdown):
     return StrainAnalysis(
       strainLevel: _parseLevel(json['strainLevel'] as String? ?? 'relaxed'),
       eyeVitality: (json['eyeVitality'] as num?)?.toDouble() ?? 0.8,
-      recommendation: json['recommendation'] as String? ??
+      recommendation:
+          json['recommendation'] as String? ??
           'Keep monitoring your eye health.',
     );
   }
@@ -181,10 +184,10 @@ Respond with ONLY valid JSON (no markdown):
   }
 
   StrainLevel _parseLevel(String raw) => switch (raw.toLowerCase()) {
-        'high' => StrainLevel.high,
-        'moderate' => StrainLevel.moderate,
-        _ => StrainLevel.relaxed,
-      };
+    'high' => StrainLevel.high,
+    'moderate' => StrainLevel.moderate,
+    _ => StrainLevel.relaxed,
+  };
 }
 
 class _Metrics {

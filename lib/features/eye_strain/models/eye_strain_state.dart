@@ -4,22 +4,22 @@ enum StrainLevel { relaxed, moderate, high }
 
 extension StrainLevelExt on StrainLevel {
   String get label => switch (this) {
-        StrainLevel.relaxed => 'Optimal Eye Health',
-        StrainLevel.moderate => 'Moderate Eye Strain',
-        StrainLevel.high => 'High Eye Strain Detected',
-      };
+    StrainLevel.relaxed => 'Optimal Eye Health',
+    StrainLevel.moderate => 'Moderate Eye Strain',
+    StrainLevel.high => 'High Eye Strain Detected',
+  };
 
   String get badge => switch (this) {
-        StrainLevel.relaxed => 'RELAXED',
-        StrainLevel.moderate => 'MODERATE STRAIN',
-        StrainLevel.high => 'HIGH STRAIN',
-      };
+    StrainLevel.relaxed => 'RELAXED',
+    StrainLevel.moderate => 'MODERATE STRAIN',
+    StrainLevel.high => 'HIGH STRAIN',
+  };
 
   Color get badgeColor => switch (this) {
-        StrainLevel.relaxed => const Color(0xFF6FCF97),
-        StrainLevel.moderate => const Color(0xFFF2C94C),
-        StrainLevel.high => const Color(0xFFEB7070),
-      };
+    StrainLevel.relaxed => const Color(0xFF6FCF97),
+    StrainLevel.moderate => const Color(0xFFF2C94C),
+    StrainLevel.high => const Color(0xFFEB7070),
+  };
 }
 
 class EarSample {
@@ -99,8 +99,32 @@ class EyeStrainState {
     this.stepName = 'Neutral Eye Mapping',
     this.eyeVitality = 1.0,
     this.activityData = const [
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
     ],
     this.brightnessOverlayOpacity = 0.0,
     this.warmthFilterIntensity = 0.0,
